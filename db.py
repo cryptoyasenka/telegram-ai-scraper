@@ -54,7 +54,8 @@ def init_db():
             domain TEXT,
             context_text TEXT,
             date TEXT,
-            FOREIGN KEY (channel_id) REFERENCES channels(id)
+            FOREIGN KEY (channel_id) REFERENCES channels(id),
+            UNIQUE(channel_id, message_id, url)
         );
 
         CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);

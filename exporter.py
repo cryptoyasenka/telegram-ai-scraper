@@ -9,9 +9,6 @@ import db
 def _format_message_md(msg: dict, links: list[dict]) -> Optional[str]:
     parts = []
 
-    date = msg.get("date", "")[:10]
-    parts.append(f"### {date}")
-
     media_type = msg.get("media_type")
     if media_type == "voice":
         parts.append("[Голосовое]")
@@ -60,9 +57,11 @@ def export_channel_md(channel_id: str, min_length: int = 0,
         min_views=min_views, search=search,
     )
     all_links = db.get_links_for_channel(channel_id)
-    total = db.get_connection().execute(
+    conn = db.get_connection()
+    total = conn.execute(
         "SELECT COUNT(*) as c FROM messages WHERE channel_id = ?", (channel_id,)
     ).fetchone()["c"]
+    conn.close()
 
     lines = [
         f"# {ch['title']} (@{ch['username']})",
