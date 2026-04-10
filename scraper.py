@@ -91,15 +91,17 @@ async def authenticate(client: TelegramClient):
 async def resolve_channel(client: TelegramClient, channel_input: str):
     channel_input = channel_input.lstrip("@")
 
-    if channel_input.startswith("https://t.me/"):
-        channel_input = channel_input.split("https://t.me/")[1].split("/")[0]
+    if "t.me/" in channel_input:
+        channel_input = channel_input.split("t.me/")[1].split("/")[0].lstrip("+")
 
     try:
         entity = await client.get_entity(channel_input)
-    except Exception:
+    except Exception as e:
+        print(f"[debug] get_entity('{channel_input}'): {e}")
         try:
             entity = await client.get_entity(PeerChannel(int(channel_input)))
-        except Exception:
+        except Exception as e2:
+            print(f"[debug] PeerChannel fallback: {e2}")
             return None
 
     channel_id = str(entity.id)

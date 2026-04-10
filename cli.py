@@ -72,19 +72,51 @@ def auth():
 
 
 @cli.command()
-@click.argument("channel")
+@click.argument("channel", required=False)
 def add(channel):
-    """Добавить канал: tgp add @username или tgp add https://t.me/username"""
+    """Добавить канал: tgp add @username, tgp add https://t.me/... или tgp add (интерактивно)"""
     async def _add():
         client = await _load_client()
         try:
-            info = await scraper.resolve_channel(client, channel)
-            if not info:
-                console.print(f"[red]Канал '{channel}' не найден[/red]")
-                return
+            if channel:
+                info = await scraper.resolve_channel(client, channel)
+                if not info:
+                    console.print(f"[red]Канал '{channel}' не найден[/red]")
+                    return
 
-            db.add_channel(info["id"], info["username"], info["title"])
-            console.print(f"[green]Добавлен: {info['title']} (@{info['username']})[/green]")
+                db.add_channel(info["id"], info["username"], info["title"])
+                console.print(f"[green]Добавлен: {info['title']} (@{info['username']})[/green]")
+            else:
+                chs = await scraper.list_user_channels(client)
+                if not chs:
+                    console.print("[red]Нет каналов/групп[/red]")
+                    return
+
+                table = Table(title="Выберите каналы для добавления")
+                table.add_column("#", width=4)
+                table.add_column("Название", width=30)
+                table.add_column("Username", width=20)
+                table.add_column("Тип", width=10)
+
+                for i, ch in enumerate(chs, 1):
+                    table.add_row(str(i), ch["title"], f"@{ch['username']}" if ch["username"] else "—", ch["type"])
+
+                console.print(table)
+                picks = Prompt.ask("Номера через запятую (например: 1,3,5) или 'q' для выхода")
+                if picks.strip().lower() == "q":
+                    return
+
+                for num_str in picks.split(","):
+                    num_str = num_str.strip()
+                    if not num_str.isdigit():
+                        continue
+                    idx = int(num_str) - 1
+                    if 0 <= idx < len(chs):
+                        ch = chs[idx]
+                        db.add_channel(ch["id"], ch["username"], ch["title"])
+                        console.print(f"[green]Добавлен: {ch['title']} (@{ch['username']})[/green]")
+                    else:
+                        console.print(f"[red]Неверный номер: {num_str}[/red]")
         finally:
             await client.disconnect()
 
