@@ -123,10 +123,23 @@ def add(channel):
     run_async(_add())
 
 
+MEDIA_HELP = (
+    "Что скачивать: text (ничего), voice (по умолчанию — для транскрипции), "
+    "photos, videos, docs, all. Можно комбинировать: --media voice,photos"
+)
+
+
 @cli.command()
 @click.argument("channel", required=False)
-def scrape(channel):
+@click.option("--media", "media_spec", default=None, help=MEDIA_HELP)
+def scrape(channel, media_spec):
     """Скрейпинг каналов. Без аргумента — все каналы."""
+    try:
+        media_types = scraper.parse_media_selection(media_spec)
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        sys.exit(1)
+
     async def _scrape():
         client = await _load_client()
         try:
@@ -159,6 +172,7 @@ def scrape(channel):
                     count = await scraper.scrape_channel(
                         client, ch["id"], offset_id=ch["last_message_id"],
                         progress_callback=on_progress,
+                        media_types=media_types,
                     )
 
                 console.print(f"[green]Готово: {count} сообщений[/green]")
@@ -192,9 +206,67 @@ def scrape(channel):
 
 @cli.command()
 @click.argument("channel", required=False)
-def update(channel):
+@click.option("--media", "media_spec", default=None, help=MEDIA_HELP)
+def update(channel, media_spec):
     """Подтянуть новые посты из каналов"""
-    scrape.callback(channel)
+    scrape.callback(channel, media_spec)
+
+
+@cli.command()
+@click.argument("channel")
+@click.option("--media", "media_spec", required=True, help=MEDIA_HELP)
+@click.option("--limit", "-l", type=int, help="Ограничить кол-во файлов")
+def download(channel, media_spec, limit):
+    """Докачать медиа для уже заскрейпленных сообщений (по типам)"""
+    try:
+        media_types = scraper.parse_media_selection(media_spec)
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        sys.exit(1)
+
+    if not media_types:
+        console.print("[yellow]Нечего качать: --media text[/yellow]")
+        return
+
+    ch = db.get_channel_by_username(channel.lstrip("@"))
+    if not ch:
+        console.print(f"[red]Канал '{channel}' не найден в БД[/red]")
+        return
+
+    pending = db.get_messages_needing_media(ch["id"], sorted(media_types))
+    if limit:
+        pending = pending[:limit]
+
+    if not pending:
+        console.print(f"[dim]Нечего докачивать для {ch['title']} ({sorted(media_types)})[/dim]")
+        return
+
+    console.print(f"[bold]Докачка {len(pending)} файлов для {ch['title']}[/bold]")
+
+    async def _dl():
+        client = await _load_client()
+        try:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TextColumn("{task.completed}/{task.total}"),
+                console=console,
+            ) as progress:
+                task = progress.add_task("Загрузка медиа", total=len(pending))
+
+                def on_progress(current, total):
+                    progress.update(task, completed=current, total=total)
+
+                done = await scraper.download_pending_media(
+                    client, ch["id"], media_types,
+                    limit=limit, progress_callback=on_progress,
+                )
+            console.print(f"[green]Скачано: {done}[/green]")
+        finally:
+            await client.disconnect()
+
+    run_async(_dl())
 
 
 @cli.command()

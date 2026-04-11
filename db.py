@@ -171,6 +171,33 @@ def update_transcript(channel_id: str, message_id: int, transcript: str):
     conn.close()
 
 
+def get_messages_needing_media(channel_id: str, media_types: list[str]) -> list[dict]:
+    if not media_types:
+        return []
+    placeholders = ",".join("?" * len(media_types))
+    conn = get_connection()
+    rows = conn.execute(
+        f"""SELECT message_id, media_type FROM messages
+            WHERE channel_id = ?
+            AND media_type IN ({placeholders})
+            AND media_path IS NULL
+            ORDER BY message_id""",
+        [channel_id, *media_types],
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def update_media_path(channel_id: str, message_id: int, path: str):
+    conn = get_connection()
+    conn.execute(
+        "UPDATE messages SET media_path = ? WHERE channel_id = ? AND message_id = ?",
+        (path, channel_id, message_id),
+    )
+    conn.commit()
+    conn.close()
+
+
 def get_messages_without_transcript(channel_id: str) -> list[dict]:
     conn = get_connection()
     rows = conn.execute(
