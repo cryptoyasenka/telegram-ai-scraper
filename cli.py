@@ -443,6 +443,25 @@ def status():
 
 
 @cli.command()
+@click.option("--host", default="127.0.0.1", help="Хост (default 127.0.0.1)")
+@click.option("--port", default=8765, type=int, help="Порт (default 8765)")
+def serve(host, port):
+    """Запустить веб-интерфейс"""
+    try:
+        import uvicorn
+    except ImportError:
+        console.print("[red]Нужен uvicorn: pip install -r requirements.txt[/red]")
+        sys.exit(1)
+    from pathlib import Path
+    project_root = str(Path(__file__).resolve().parent)
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    from web.app import app as fastapi_app
+    console.print(f"[green]TG Parser UI →[/green] http://{host}:{port}")
+    uvicorn.run(fastapi_app, host=host, port=port, reload=False)
+
+
+@cli.command()
 def channels():
     """Список каналов из Telegram (для добавления)"""
     async def _list():

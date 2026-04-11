@@ -36,6 +36,7 @@ def init_db():
             text TEXT,
             media_type TEXT,
             media_path TEXT,
+            media_size INTEGER,
             voice_transcript TEXT,
             views INTEGER,
             forwards INTEGER,
@@ -65,6 +66,10 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_links_domain ON links(domain);
         CREATE INDEX IF NOT EXISTS idx_links_url ON links(url);
     """)
+    # Idempotent migration for existing DBs
+    existing_cols = {r[1] for r in conn.execute("PRAGMA table_info(messages)").fetchall()}
+    if "media_size" not in existing_cols:
+        conn.execute("ALTER TABLE messages ADD COLUMN media_size INTEGER")
     conn.commit()
     conn.close()
 
@@ -138,9 +143,9 @@ def insert_messages_batch(messages: list[dict]):
     conn.executemany(
         """INSERT OR IGNORE INTO messages
            (channel_id, message_id, date, sender_name, text, media_type,
-            media_path, views, forwards, reactions, reply_to, content_length)
+            media_path, media_size, views, forwards, reactions, reply_to, content_length)
            VALUES (:channel_id, :message_id, :date, :sender_name, :text, :media_type,
-                   :media_path, :views, :forwards, :reactions, :reply_to, :content_length)""",
+                   :media_path, :media_size, :views, :forwards, :reactions, :reply_to, :content_length)""",
         messages,
     )
     conn.commit()
@@ -188,6 +193,33 @@ def get_messages_needing_media(channel_id: str, media_types: list[str]) -> list[
     return [dict(r) for r in rows]
 
 
+def get_messages_missing_size(channel_id: str) -> list[int]:
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT message_id FROM messages
+           WHERE channel_id = ?
+           AND media_type IS NOT NULL
+           AND media_type NOT IN ('other')
+           AND media_size IS NULL
+           ORDER BY message_id""",
+        (channel_id,),
+    ).fetchall()
+    conn.close()
+    return [r["message_id"] for r in rows]
+
+
+def update_media_sizes_batch(channel_id: str, items: list[tuple[int, int]]):
+    if not items:
+        return
+    conn = get_connection()
+    conn.executemany(
+        "UPDATE messages SET media_size = ? WHERE channel_id = ? AND message_id = ?",
+        [(size, channel_id, mid) for mid, size in items],
+    )
+    conn.commit()
+    conn.close()
+
+
 def update_media_path(channel_id: str, message_id: int, path: str):
     conn = get_connection()
     conn.execute(
@@ -196,6 +228,33 @@ def update_media_path(channel_id: str, message_id: int, path: str):
     )
     conn.commit()
     conn.close()
+
+
+def get_media_breakdown(channel_id: str) -> dict:
+    """Return per-type breakdown: {media_type: {count, bytes, downloaded, pending_bytes}}."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT
+               COALESCE(media_type, 'text') AS mt,
+               COUNT(*) AS count,
+               COALESCE(SUM(media_size), 0) AS bytes,
+               SUM(CASE WHEN media_path IS NOT NULL THEN 1 ELSE 0 END) AS downloaded,
+               COALESCE(SUM(CASE WHEN media_path IS NULL THEN media_size ELSE 0 END), 0) AS pending_bytes
+           FROM messages
+           WHERE channel_id = ?
+           GROUP BY COALESCE(media_type, 'text')""",
+        (channel_id,),
+    ).fetchall()
+    conn.close()
+    result = {}
+    for r in rows:
+        result[r["mt"]] = {
+            "count": r["count"],
+            "bytes": r["bytes"] or 0,
+            "downloaded": r["downloaded"] or 0,
+            "pending_bytes": r["pending_bytes"] or 0,
+        }
+    return result
 
 
 def get_messages_without_transcript(channel_id: str) -> list[dict]:

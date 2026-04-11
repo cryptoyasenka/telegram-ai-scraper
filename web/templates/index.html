@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Каналы</h1>
+
+<form action="/channels/add" method="post" class="add-form">
+  <input type="text" name="channel" placeholder="@username или t.me/..." required>
+  <button type="submit">Добавить и просканировать</button>
+</form>
+
+{% if active_jobs %}
+  <div class="jobs">
+    <h3>Активные задачи</h3>
+    {% for j in active_jobs %}
+      <div class="job">
+        <span>{{ j.label }} — {{ j.type }}</span>
+        <span>{{ j.current }}/{{ j.total }}</span>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<table class="channels">
+  <thead>
+    <tr>
+      <th>Канал</th>
+      <th>Постов</th>
+      <th>Медиа на диске</th>
+      <th>Доступно скачать</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for ch in channels %}
+      {% set total = ch.breakdown.values()|sum(attribute='count') %}
+      {% set pending_count = ch.breakdown.values()|sum(attribute='count') - ch.breakdown.values()|sum(attribute='downloaded') %}
+      <tr>
+        <td>
+          <a href="/channels/{{ ch.username }}">{{ ch.title }}</a>
+          <div class="sub">@{{ ch.username }}</div>
+        </td>
+        <td>{{ total }}</td>
+        <td>{{ ch.breakdown.values()|sum(attribute='downloaded') }}</td>
+        <td>{{ pending_count }}</td>
+        <td><a href="/channels/{{ ch.username }}" class="btn">Открыть</a></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if not channels %}
+  <p class="empty">Пока нет каналов. Добавь через форму выше.</p>
+{% endif %}
+{% endblock %}

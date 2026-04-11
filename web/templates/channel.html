@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}{{ channel.title }} — TG Parser{% endblock %}
+{% block content %}
+
+<div class="channel-head">
+  <h1>{{ channel.title }}</h1>
+  <div class="sub">@{{ channel.username }} · {{ total_posts }} постов · {{ total_bytes_human }} медиа</div>
+  <form action="/channels/{{ channel.username }}/scan" method="post" class="inline">
+    <button type="submit">Обновить (новые посты + размеры)</button>
+  </form>
+  {% if missing_sizes > 0 %}
+  <form action="/channels/{{ channel.username }}/backfill-sizes" method="post" class="inline">
+    <button type="submit">Заполнить размеры ({{ missing_sizes }})</button>
+  </form>
+  <div class="sub" style="margin-top: 6px; color: #e3a84c;">
+    ⚠ У {{ missing_sizes }} сообщений неизвестен размер медиа — ETA будет неточным, пока не заполнишь.
+  </div>
+  {% endif %}
+</div>
+
+{% if current_job_id %}
+<div id="job-panel" data-job-id="{{ current_job_id }}" class="job-panel">
+  <div class="job-label">Задача запущена…</div>
+  <div class="progress"><div class="bar" style="width:0%"></div></div>
+  <div class="job-meta">
+    <span class="j-status">—</span> ·
+    <span class="j-count">0/0</span> ·
+    <span class="j-bytes">0 B / 0 B</span> ·
+    ETA <span class="j-eta">—</span>
+  </div>
+</div>
+{% endif %}
+
+<h2>Выбор того, что скачать</h2>
+<p class="hint">Текст, реакции и метаданные уже в БД. Отмечай типы медиа — ETA пересчитается под выбор. Скорость сети: <b id="rate-display">{{ rate_human }}</b></p>
+
+<form action="/channels/{{ channel.username }}/download" method="post" id="dl-form">
+  <table class="media-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Тип</th>
+        <th>Всего</th>
+        <th>Скачано</th>
+        <th>Осталось</th>
+        <th>Размер (не скачано)</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for c in cards %}
+      {% if c.key != 'text' and c.key != 'other' %}
+        {% set disabled = c.pending_bytes == 0 and c.downloaded == c.count %}
+        <tr class="{% if disabled %}dim{% endif %}">
+          <td>
+            <input type="checkbox" name="types" value="{{ c.key }}"
+              data-bytes="{{ c.pending_bytes }}" data-count="{{ c.count - c.downloaded }}"
+              class="type-cb" {% if disabled %}disabled{% endif %}>
+          </td>
+          <td><label>{{ c.key }}</label></td>
+          <td>{{ c.count }}</td>
+          <td>{{ c.downloaded }}</td>
+          <td>{{ c.count - c.downloaded }}</td>
+          <td>{{ c.pending_bytes_human }}</td>
+        </tr>
+      {% endif %}
+    {% endfor %}
+    {% for c in cards %}
+      {% if c.key == 'text' %}
+        <tr class="dim">
+          <td><input type="checkbox" checked disabled></td>
+          <td><label>text</label></td>
+          <td>{{ c.count }}</td>
+          <td>—</td>
+          <td>—</td>
+          <td>уже в БД</td>
+        </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="eta-box">
+    Выбрано: <b id="sel-count">0</b> файлов, <b id="sel-size">0 B</b>
+    · расчётное время: <b id="sel-eta">—</b>
+  </div>
+
+  <button type="submit" class="btn primary">Скачать выбранное</button>
+</form>
+
+<script>
+const RATE = {{ rate_bytes_per_sec|int }};
+
+function fmtSize(b) {
+  if (!b) return "0 B";
+  const u = ["B","KB","MB","GB","TB"];
+  let i = 0, v = b;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return v.toFixed(1) + " " + u[i];
+}
+function fmtEta(sec) {
+  if (!sec || sec < 0) return "—";
+  sec = Math.round(sec);
+  if (sec < 60) return sec + " с";
+  const m = Math.floor(sec/60), s = sec%60;
+  if (m < 60) return m + "м " + s + "с";
+  const h = Math.floor(m/60), mm = m%60;
+  return h + "ч " + mm + "м";
+}
+function recalcEta() {
+  let bytes = 0, count = 0;
+  document.querySelectorAll(".type-cb").forEach(cb => {
+    if (cb.checked) {
+      bytes += parseInt(cb.dataset.bytes) || 0;
+      count += parseInt(cb.dataset.count) || 0;
+    }
+  });
+  document.getElementById("sel-count").textContent = count;
+  document.getElementById("sel-size").textContent = fmtSize(bytes);
+  const eta = RATE > 0 && bytes > 0 ? bytes / RATE : null;
+  document.getElementById("sel-eta").textContent = fmtEta(eta);
+}
+document.querySelectorAll(".type-cb").forEach(cb => cb.addEventListener("change", recalcEta));
+recalcEta();
+
+// --- Job polling ---
+const panel = document.getElementById("job-panel");
+if (panel) {
+  const jobId = panel.dataset.jobId;
+  async function poll() {
+    try {
+      const r = await fetch("/jobs/" + jobId);
+      if (!r.ok) return;
+      const j = await r.json();
+      panel.querySelector(".j-status").textContent = j.status;
+      panel.querySelector(".j-count").textContent = j.current + "/" + j.total;
+      panel.querySelector(".j-bytes").textContent = j.bytes_done_human + " / " + j.bytes_total_human;
+      panel.querySelector(".j-eta").textContent = j.eta_human;
+      const pct = j.total > 0 ? Math.min(100, 100 * j.current / j.total) : 0;
+      panel.querySelector(".bar").style.width = pct + "%";
+      if (j.status === "running") {
+        setTimeout(poll, 1000);
+      } else {
+        panel.querySelector(".job-label").textContent =
+          j.status === "done" ? "Готово" : "Ошибка: " + (j.error || "");
+        setTimeout(() => window.location.reload(), 1200);
+      }
+    } catch (e) {
+      setTimeout(poll, 2000);
+    }
+  }
+  poll();
+}
+</script>
+{% endblock %}

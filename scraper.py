@@ -85,6 +85,23 @@ def _get_media_type(message) -> Optional[str]:
     return "other"
 
 
+def _get_media_size(message) -> Optional[int]:
+    """Best-effort media size in bytes, without downloading."""
+    if not message.media:
+        return None
+    f = getattr(message, "file", None)
+    if f is not None:
+        size = getattr(f, "size", None)
+        if size:
+            return int(size)
+    doc = getattr(message.media, "document", None)
+    if doc is not None:
+        size = getattr(doc, "size", None)
+        if size:
+            return int(size)
+    return None
+
+
 def _get_file_ext(media_type: str) -> str:
     return {
         "voice": ".ogg",
@@ -223,6 +240,7 @@ async def _flush_batch(buffer, channel_id, channel_title, media_dir, media_types
             "text": text,
             "media_type": media_type,
             "media_path": paths_by_idx.get(idx),
+            "media_size": _get_media_size(message),
             "views": message.views,
             "forwards": message.forwards,
             "reactions": _format_reactions(message),
@@ -356,6 +374,43 @@ async def download_pending_media(client: TelegramClient, channel_id: str,
             progress_callback(min(i + len(chunk_ids), total), total)
 
     return done
+
+
+async def backfill_media_sizes(client: TelegramClient, channel_id: str,
+                                 progress_callback=None) -> int:
+    """Fetch and update media_size for messages missing it. Does not download files."""
+    ch = db.get_channel(channel_id)
+    if not ch:
+        raise ValueError(f"Channel {channel_id} not found in DB")
+
+    missing_ids = db.get_messages_missing_size(channel_id)
+    total = len(missing_ids)
+    if total == 0:
+        return 0
+
+    try:
+        entity = await client.get_entity(PeerChannel(int(channel_id)))
+    except Exception:
+        entity = await client.get_entity(ch["username"])
+
+    updated = 0
+    for i in range(0, total, BATCH_SIZE):
+        chunk = missing_ids[i:i + BATCH_SIZE]
+        messages = await client.get_messages(entity, ids=chunk)
+        batch = []
+        for msg in messages:
+            if msg is None:
+                continue
+            size = _get_media_size(msg)
+            if size:
+                batch.append((msg.id, size))
+        if batch:
+            db.update_media_sizes_batch(channel_id, batch)
+            updated += len(batch)
+        if progress_callback:
+            progress_callback(min(i + len(chunk), total), total)
+
+    return updated
 
 
 async def list_user_channels(client: TelegramClient) -> list[dict]:

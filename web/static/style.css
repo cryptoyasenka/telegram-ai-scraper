@@ -1,0 +1,129 @@
+:root {
+  --bg: #0e0f12;
+  --fg: #e6e6e6;
+  --muted: #8a8e96;
+  --accent: #6b8afd;
+  --accent-2: #4caf88;
+  --border: #23262b;
+  --panel: #16181d;
+  --danger: #e15b5b;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+header {
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 18px;
+}
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px;
+}
+h1 { margin: 0 0 16px; font-size: 24px; }
+h2 { margin: 24px 0 12px; font-size: 18px; }
+h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
+a { color: var(--accent); }
+.sub { color: var(--muted); font-size: 12px; }
+.hint { color: var(--muted); font-size: 13px; margin-top: -4px; }
+.empty { color: var(--muted); }
+
+form.add-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+input[type="text"] {
+  flex: 1;
+  padding: 10px 12px;
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+button, .btn {
+  padding: 10px 16px;
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+button:hover, .btn:hover { border-color: var(--accent); }
+button.primary, .btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+th, td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; }
+tr.dim td { color: var(--muted); }
+
+.channel-head { margin-bottom: 24px; }
+.channel-head .inline { display: inline-block; margin-top: 12px; }
+
+.job-panel {
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.job-label { font-weight: 600; margin-bottom: 8px; }
+.progress {
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.5s ease;
+}
+.job-meta { color: var(--muted); font-size: 13px; }
+
+.media-table input[type="checkbox"] { transform: scale(1.3); }
+.eta-box {
+  padding: 12px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 16px 0;
+  font-size: 15px;
+}
+.eta-box b { color: var(--accent); }
+
+.jobs {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.jobs .job { display: flex; justify-content: space-between; font-size: 13px; }
