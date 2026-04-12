@@ -457,7 +457,7 @@ def serve(host, port):
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
     from web.app import app as fastapi_app
-    console.print(f"[green]TG Parser UI →[/green] http://{host}:{port}")
+    console.print(f"[green]TG Parser UI ->[/green] http://{host}:{port}")
     uvicorn.run(fastapi_app, host=host, port=port, reload=False)
 
 
