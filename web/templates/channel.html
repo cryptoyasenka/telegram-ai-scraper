@@ -120,6 +120,53 @@
   <button type="submit" class="btn primary">{{ t('download_selected') }}</button>
 </form>
 
+{% if transcript_breakdown %}
+<h2>{{ t('transcription_title') }}</h2>
+{% if pending_transcripts > 0 %}
+<p class="hint">{{ t('transcribe_hint', n=pending_transcripts) }}</p>
+<form action="/channels/{{ channel.username }}/transcribe" method="post" id="tr-form">
+  <table class="media-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>{{ t('th_type') }}</th>
+        <th>{{ t('th_total') }}</th>
+        <th>{{ t('tr_transcribed') }}</th>
+        <th>{{ t('tr_pending') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for key in ['voice', 'audio', 'video_note', 'video'] %}
+      {% if key in transcript_breakdown %}
+        {% set tb = transcript_breakdown[key] %}
+        {% set all_done = tb.pending == 0 %}
+        <tr class="{% if all_done %}done{% endif %}">
+          <td>
+            <input type="checkbox" name="tr_types" value="{{ key }}"
+              data-count="{{ tb.pending }}"
+              class="tr-cb" {% if all_done %}disabled{% endif %}>
+          </td>
+          <td><label>{{ get_type_label(key) }}</label></td>
+          <td>{{ tb.total }}</td>
+          <td>{{ tb.transcribed }}{% if all_done %} ✓{% endif %}</td>
+          <td>{% if all_done %}<span class="ok">{{ t('transcribe_done') }}</span>{% else %}{{ tb.pending }}{% endif %}</td>
+        </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="eta-box">
+    {{ t('selected') }}: <b id="tr-sel-count">0</b> {{ t('files') }}
+  </div>
+
+  <button type="submit" class="btn-transcribe">{{ t('tr_start') }}</button>
+</form>
+{% else %}
+<p class="done-badge" style="margin:0">✓ {{ t('transcribe_done') }}</p>
+{% endif %}
+{% endif %}
+
 <script>
 const RATE = {{ rate_bytes_per_sec|int }};
 const I18N = {
@@ -132,6 +179,7 @@ const I18N = {
   error: "{{ t('js_error') }}",
   job_not_found: "{{ t('js_job_not_found') }}",
   done_nothing: "{{ t('js_done_nothing') }}",
+  done_transcribed: "{{ t('js_done_transcribed') }}",
 };
 
 function fmtSize(b) {
@@ -165,6 +213,18 @@ function recalcEta() {
 }
 document.querySelectorAll(".type-cb").forEach(cb => cb.addEventListener("change", recalcEta));
 recalcEta();
+
+// --- Transcription selection ---
+function recalcTr() {
+  let count = 0;
+  document.querySelectorAll(".tr-cb").forEach(cb => {
+    if (cb.checked) count += parseInt(cb.dataset.count) || 0;
+  });
+  const el = document.getElementById("tr-sel-count");
+  if (el) el.textContent = count;
+}
+document.querySelectorAll(".tr-cb").forEach(cb => cb.addEventListener("change", recalcTr));
+recalcTr();
 
 // --- Folder browser ---
 let fbParent = null;
@@ -254,9 +314,15 @@ if (panel) {
         bar.classList.remove("indeterminate");
         if (j.status === "done") {
           bar.style.width = "100%";
-          const count = j.result?.downloaded ?? j.result?.updated ?? j.current;
-          panel.querySelector(".job-label").textContent =
-            count > 0 ? ("{{ t('js_done_files') }}".replace("%(n)s", count)) : I18N.done_nothing;
+          const transcribed = j.result?.transcribed;
+          const count = transcribed ?? j.result?.downloaded ?? j.result?.updated ?? j.current;
+          let doneMsg;
+          if (transcribed !== undefined) {
+            doneMsg = count > 0 ? I18N.done_transcribed.replace("%(n)s", count) : I18N.done_nothing;
+          } else {
+            doneMsg = count > 0 ? ("{{ t('js_done_files') }}".replace("%(n)s", count)) : I18N.done_nothing;
+          }
+          panel.querySelector(".job-label").textContent = doneMsg;
         } else {
           bar.style.width = "0%";
           panel.querySelector(".job-label").textContent = I18N.error + ": " + (j.error || "");

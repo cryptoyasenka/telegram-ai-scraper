@@ -205,6 +205,42 @@ async def _run_download(job_id: str, channel_id: str, media_types: set[str],
             await client.disconnect()
 
 
+async def _run_transcribe(job_id: str, channel_id: str,
+                          media_types: list[str] = None):
+    """Run transcription in a thread (whisper is CPU-bound and synchronous)."""
+    import concurrent.futures
+    import time
+    try:
+        import transcriber
+        pending = db.get_messages_without_transcript(channel_id, media_types=media_types)
+        if not pending:
+            await jobs.finish(job_id, result={"transcribed": 0})
+            return
+
+        total = len(pending)
+        await jobs.update(job_id, total=total)
+
+        loop = asyncio.get_event_loop()
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        done = 0
+        start = time.time()
+
+        for i, msg in enumerate(pending):
+            transcript = await loop.run_in_executor(
+                executor, transcriber.transcribe_file, msg["media_path"]
+            )
+            if transcript:
+                db.update_transcript(channel_id, msg["message_id"], transcript)
+                done += 1
+
+            await jobs.update(job_id, current=i + 1, total=total)
+
+        executor.shutdown(wait=False)
+        await jobs.finish(job_id, result={"transcribed": done})
+    except Exception as e:
+        await jobs.finish(job_id, error=str(e))
+
+
 # --- Routes -------------------------------------------------------------------
 
 
@@ -263,6 +299,23 @@ async def channels_backfill(username: str):
     return RedirectResponse(url=f"/channels/{username}?job={job_id}", status_code=303)
 
 
+@app.post("/channels/{username}/transcribe")
+async def channels_transcribe(username: str, request: Request):
+    ch = db.get_channel_by_username(username)
+    if not ch:
+        raise HTTPException(status_code=404, detail="Канал не найден")
+    form = await request.form()
+    selected = list(form.getlist("tr_types"))
+    if not selected:
+        selected = None  # all types
+    pending = db.get_messages_without_transcript(ch["id"], media_types=selected)
+    if not pending:
+        return RedirectResponse(url=f"/channels/{username}", status_code=303)
+    job_id = await jobs.create("transcribe", ch["id"], label=ch["title"])
+    asyncio.create_task(_run_transcribe(job_id, ch["id"], media_types=selected))
+    return RedirectResponse(url=f"/channels/{username}?job={job_id}", status_code=303)
+
+
 @app.get("/channels/{username}", response_class=HTMLResponse)
 async def channel_detail(request: Request, username: str, job: Optional[str] = None):
     ch = db.get_channel_by_username(username)
@@ -273,6 +326,8 @@ async def channel_detail(request: Request, username: str, job: Optional[str] = N
     total_posts = sum(v["count"] for v in breakdown.values())
     total_bytes = sum(v["bytes"] for v in breakdown.values())
     missing_sizes = len(db.get_messages_missing_size(ch["id"]))
+    transcript_breakdown = db.get_transcript_breakdown(ch["id"])
+    pending_transcripts = sum(v["pending"] for v in transcript_breakdown.values())
 
     # Build type cards in a stable order
     order = ["text", "voice", "audio", "video_note", "photo", "video", "document", "other"]
@@ -306,6 +361,8 @@ async def channel_detail(request: Request, username: str, job: Optional[str] = N
             rate_human=f"{_format_size(int(_rate_state['bytes_per_sec']))}/{t('js_s', lang)}",
             current_job_id=job,
             missing_sizes=missing_sizes,
+            pending_transcripts=pending_transcripts,
+            transcript_breakdown=transcript_breakdown,
             channel_dir=str(channel_dir),
             default_dir=default_dir,
             is_custom_dir=ch.get("download_dir") is not None,

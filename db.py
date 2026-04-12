@@ -302,19 +302,42 @@ def get_media_breakdown(channel_id: str) -> dict:
     return result
 
 
-def get_messages_without_transcript(channel_id: str) -> list[dict]:
+def get_messages_without_transcript(channel_id: str,
+                                     media_types: Optional[list[str]] = None) -> list[dict]:
     conn = get_connection()
+    types = media_types or ["voice", "video_note", "video", "audio"]
+    placeholders = ",".join("?" * len(types))
     rows = conn.execute(
-        """SELECT * FROM messages
+        f"""SELECT * FROM messages
            WHERE channel_id = ?
-           AND media_type IN ('voice', 'video_note', 'video')
+           AND media_type IN ({placeholders})
            AND voice_transcript IS NULL
            AND media_path IS NOT NULL
            ORDER BY date""",
-        (channel_id,),
+        [channel_id, *types],
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_transcript_breakdown(channel_id: str) -> dict:
+    """Per-type breakdown: {media_type: {total, transcribed, pending, total_duration_sec}}."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT media_type,
+               COUNT(*) AS total,
+               SUM(CASE WHEN voice_transcript IS NOT NULL THEN 1 ELSE 0 END) AS transcribed,
+               SUM(CASE WHEN voice_transcript IS NULL AND media_path IS NOT NULL THEN 1 ELSE 0 END) AS pending,
+               COALESCE(SUM(CASE WHEN voice_transcript IS NULL AND media_path IS NOT NULL THEN media_size ELSE 0 END), 0) AS pending_bytes
+           FROM messages
+           WHERE channel_id = ?
+           AND media_type IN ('voice', 'audio', 'video_note', 'video')
+           AND media_path IS NOT NULL
+           GROUP BY media_type""",
+        (channel_id,),
+    ).fetchall()
+    conn.close()
+    return {r["media_type"]: dict(r) for r in rows}
 
 
 def get_messages_for_export(channel_id: str, min_length: int = 0,

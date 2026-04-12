@@ -72,6 +72,23 @@ _STRINGS = {
     "js_m": {"en": "m", "ru": "м", "uk": "хв"},
     "js_h": {"en": "h", "ru": "ч", "uk": "год"},
 
+    # --- transcription ---
+    "transcription_title": {"en": "Transcription", "ru": "Транскрипция", "uk": "Транскрипція"},
+    "transcribe_hint": {
+        "en": "%(n)s files awaiting transcription (speech-to-text via Whisper). Select types and press start.",
+        "ru": "%(n)s файлов ждут транскрипции (речь в текст через Whisper). Выбери типы и нажми старт.",
+        "uk": "%(n)s файлів чекають транскрипції (мовлення в текст через Whisper). Обери типи і натисни старт.",
+    },
+    "transcribe_done": {"en": "All transcribed", "ru": "Все транскрибированы", "uk": "Усі транскрибовано"},
+    "tr_transcribed": {"en": "Transcribed", "ru": "Готово", "uk": "Готово"},
+    "tr_pending": {"en": "Pending", "ru": "Ожидает", "uk": "Очікує"},
+    "tr_start": {"en": "Start transcription", "ru": "Начать транскрипцию", "uk": "Почати транскрипцію"},
+    "js_done_transcribed": {
+        "en": "Done \u2014 %(n)s transcribed",
+        "ru": "Готово \u2014 %(n)s транскрибировано",
+        "uk": "Готово \u2014 %(n)s транскрибовано",
+    },
+
     # --- media type labels ---
     "type_text": {"en": "Text", "ru": "Текст", "uk": "Текст"},
     "type_voice": {"en": "Voice", "ru": "Голосовые", "uk": "Голосові"},

@@ -95,6 +95,10 @@ tr.dim td { color: var(--muted); }
 tr.done td { color: var(--muted); }
 .ok { color: var(--accent-2); }
 
+.btn-transcribe { background: var(--accent-2); border-color: var(--accent-2); color: #fff; font-weight: 600; padding: 10px 16px; border-radius: 6px; cursor: pointer; }
+.btn-transcribe:hover { opacity: 0.9; border-color: var(--accent-2); }
+.done-badge { color: var(--accent-2); font-size: 13px; border: none; background: none; cursor: default; }
+.done-badge:hover { border-color: transparent; }
 .back-link { color: var(--muted); text-decoration: none; font-size: 13px; display: inline-block; margin-bottom: 8px; }
 .back-link:hover { color: var(--accent); }
 .channel-head { margin-bottom: 24px; }
