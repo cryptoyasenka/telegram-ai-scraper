@@ -18,6 +18,23 @@
   {% endif %}
 </div>
 
+<div class="download-dir-box">
+  <details{% if is_custom_dir %} open{% endif %}>
+    <summary>Папка загрузки: <code>{{ channel_dir }}</code>{% if is_custom_dir %} <span class="hint">(кастомная)</span>{% endif %}</summary>
+    <form action="/channels/{{ channel.username }}/set-download-dir" method="post" class="dir-form">
+      <input type="text" name="download_dir" value="{{ channel_dir }}"
+             placeholder="{{ default_dir }}" style="width:100%">
+      <div class="dir-actions">
+        <button type="submit" class="btn">Сохранить</button>
+        {% if is_custom_dir %}
+        <button type="submit" name="download_dir" value="" class="btn secondary">Сбросить по умолчанию</button>
+        {% endif %}
+      </div>
+      <div class="hint">По умолчанию: <code>{{ default_dir }}</code></div>
+    </form>
+  </details>
+</div>
+
 {% if current_job_id %}
 <div id="job-panel" data-job-id="{{ current_job_id }}" class="job-panel">
   <div class="job-label">Задача запущена…</div>

@@ -280,7 +280,7 @@ async def scrape_channel(client: TelegramClient, channel_id: str,
     if total == 0:
         return 0
 
-    channel_dir = config.DATA_DIR / (ch["username"] or channel_id)
+    channel_dir = db.get_channel_dir(ch)
     media_dir = channel_dir / "media"
     media_dir.mkdir(parents=True, exist_ok=True)
 
@@ -340,7 +340,7 @@ async def download_pending_media(client: TelegramClient, channel_id: str,
     except Exception:
         entity = await client.get_entity(ch["username"])
 
-    channel_dir = config.DATA_DIR / (ch["username"] or channel_id)
+    channel_dir = db.get_channel_dir(ch)
     media_dir = channel_dir / "media"
     media_dir.mkdir(parents=True, exist_ok=True)
 

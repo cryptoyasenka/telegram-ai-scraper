@@ -129,7 +129,7 @@ def save_export(channel_id: str, **kwargs):
     if not ch:
         raise ValueError(f"Channel {channel_id} not found")
 
-    channel_dir = config.DATA_DIR / (ch["username"] or channel_id)
+    channel_dir = db.get_channel_dir(ch)
     channel_dir.mkdir(parents=True, exist_ok=True)
 
     md_content = export_channel_md(channel_id, **kwargs)

@@ -261,6 +261,9 @@ async def channel_detail(request: Request, username: str, job: Optional[str] = N
                 "pending_bytes_human": _format_size(v["pending_bytes"]),
             })
 
+    channel_dir = db.get_channel_dir(ch)
+    default_dir = str(config.DATA_DIR / (ch["username"] or ch["id"]))
+
     return templates.TemplateResponse(
         "channel.html",
         {
@@ -273,8 +276,23 @@ async def channel_detail(request: Request, username: str, job: Optional[str] = N
             "rate_human": f"{_format_size(int(_rate_state['bytes_per_sec']))}/с",
             "current_job_id": job,
             "missing_sizes": missing_sizes,
+            "channel_dir": str(channel_dir),
+            "default_dir": default_dir,
+            "is_custom_dir": ch.get("download_dir") is not None,
         },
     )
+
+
+@app.post("/channels/{username}/set-download-dir")
+async def channels_set_download_dir(username: str, request: Request):
+    ch = db.get_channel_by_username(username)
+    if not ch:
+        raise HTTPException(status_code=404, detail="Канал не найден")
+    form = await request.form()
+    raw = form.get("download_dir", "").strip()
+    # Empty string → reset to default
+    db.update_download_dir(ch["id"], raw if raw else None)
+    return RedirectResponse(url=f"/channels/{username}", status_code=303)
 
 
 @app.post("/channels/{username}/download")

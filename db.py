@@ -2,6 +2,7 @@ import sqlite3
 import json
 from pathlib import Path
 from typing import Optional
+import config
 from config import DB_PATH
 
 
@@ -66,10 +67,32 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_links_domain ON links(domain);
         CREATE INDEX IF NOT EXISTS idx_links_url ON links(url);
     """)
-    # Idempotent migration for existing DBs
+    # Idempotent migrations for existing DBs
     existing_cols = {r[1] for r in conn.execute("PRAGMA table_info(messages)").fetchall()}
     if "media_size" not in existing_cols:
         conn.execute("ALTER TABLE messages ADD COLUMN media_size INTEGER")
+
+    ch_cols = {r[1] for r in conn.execute("PRAGMA table_info(channels)").fetchall()}
+    if "download_dir" not in ch_cols:
+        conn.execute("ALTER TABLE channels ADD COLUMN download_dir TEXT")
+
+    conn.commit()
+    conn.close()
+
+
+def get_channel_dir(channel: dict) -> Path:
+    """Return the channel's storage directory (custom or default)."""
+    if channel.get("download_dir"):
+        return Path(channel["download_dir"])
+    return config.DATA_DIR / (channel["username"] or channel["id"])
+
+
+def update_download_dir(channel_id: str, download_dir: str):
+    conn = get_connection()
+    conn.execute(
+        "UPDATE channels SET download_dir = ? WHERE id = ?",
+        (download_dir or None, channel_id),
+    )
     conn.commit()
     conn.close()
 
