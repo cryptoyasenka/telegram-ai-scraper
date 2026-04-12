@@ -4,6 +4,13 @@ Telegram channel parser that scrapes messages, downloads media, transcribes voic
 
 Includes a full web UI and a CLI.
 
+## One-Click Launch
+
+**Windows** — double-click `start.bat`
+**macOS/Linux** — run `./start.sh`
+
+On first run, the script creates a virtual environment and installs everything automatically. Then run `tgp auth` once to connect your Telegram account — and you're done.
+
 ## Features
 
 - **Scrape channels** — pull all messages, metadata, reactions, links
@@ -24,10 +31,12 @@ Includes a full web UI and a CLI.
 ## Requirements
 
 - Python 3.11+
-- ffmpeg (for video transcription)
+- ffmpeg (for video transcription — optional, only needed for video files)
 - Telegram API credentials from [my.telegram.org](https://my.telegram.org)
 
-## Installation
+## Manual Installation
+
+If you prefer to set things up manually instead of using the launch scripts:
 
 ```bash
 git clone https://github.com/cryptoyasenka/tg-parser.git
@@ -148,6 +157,8 @@ All operations run as background jobs with progress bars and live ETA.
 
 ```
 tg-parser/
+├── start.bat        # One-click launch (Windows)
+├── start.sh         # One-click launch (macOS/Linux)
 ├── cli.py           # CLI entry point (click)
 ├── config.py        # Configuration constants
 ├── db.py            # SQLite database operations
