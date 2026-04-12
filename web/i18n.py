@@ -1,6 +1,8 @@
 """Minimal i18n: 3 languages, cookie-based selection."""
 
 LANGUAGES = {"en": "English", "ru": "Русский", "uk": "Українська"}
+# Display codes for the language switcher (uk → UA to avoid confusion with United Kingdom)
+LANG_DISPLAY = {"en": "EN", "ru": "RU", "uk": "UA"}
 DEFAULT_LANG = "ru"
 
 _STRINGS = {

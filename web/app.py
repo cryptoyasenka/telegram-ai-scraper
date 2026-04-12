@@ -25,7 +25,7 @@ import db  # noqa: E402
 import scraper  # noqa: E402
 import exporter  # noqa: E402
 from web import jobs  # noqa: E402
-from web.i18n import t, get_type_label, get_type_label_single, LANGUAGES, DEFAULT_LANG  # noqa: E402
+from web.i18n import t, get_type_label, get_type_label_single, LANGUAGES, LANG_DISPLAY, DEFAULT_LANG  # noqa: E402
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -52,6 +52,7 @@ def _ctx(request: Request, **kwargs) -> dict:
         "t": lambda key, **kw: t(key, lang, **kw),
         "lang": lang,
         "languages": LANGUAGES,
+        "lang_display": LANG_DISPLAY,
         "get_type_label": lambda key: get_type_label(key, lang),
         "get_type_label_single": lambda key: get_type_label_single(key, lang),
         **kwargs,

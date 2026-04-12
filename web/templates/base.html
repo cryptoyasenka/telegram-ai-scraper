@@ -17,9 +17,9 @@
     <div class="lang-switcher">
       {% for code, name in languages.items() %}
         {% if code == lang %}
-          <span class="lang-active">{{ code|upper }}</span>
+          <span class="lang-active">{{ lang_display[code] }}</span>
         {% else %}
-          <a href="/set-lang/{{ code }}">{{ code|upper }}</a>
+          <a href="/set-lang/{{ code }}">{{ lang_display[code] }}</a>
         {% endif %}
       {% endfor %}
     </div>
