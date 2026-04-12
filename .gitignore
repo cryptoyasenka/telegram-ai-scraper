@@ -9,3 +9,12 @@ data/
 config.local.py
 .env
 *.egg-info/
+*.db
+*.sqlite
+*.sqlite3
+*.tmp*
+.DS_Store
+*.log
+*.pid
+dist/
+build/

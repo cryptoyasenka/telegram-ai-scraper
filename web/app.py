@@ -8,6 +8,7 @@ Flow:
 import asyncio
 import json
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -30,7 +31,12 @@ from web.i18n import t, get_type_label, get_type_label_single, LANGUAGES, DEFAUL
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-app = FastAPI(title="TG Parser")
+@asynccontextmanager
+async def lifespan(application):
+    db.init_db()
+    yield
+
+app = FastAPI(title="TG Parser", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
@@ -86,17 +92,20 @@ def _format_size(b: int) -> str:
     return f"{v:.1f} {units[i]}"
 
 
-def _format_eta(seconds: Optional[float]) -> str:
+def _format_eta(seconds: Optional[float], lang: str = "ru") -> str:
     if seconds is None:
         return "—"
     seconds = int(max(seconds, 0))
+    s_label = t("js_s", lang)
+    m_label = t("js_m", lang)
+    h_label = t("js_h", lang)
     if seconds < 60:
-        return f"{seconds} с"
+        return f"{seconds} {s_label}"
     m, s = divmod(seconds, 60)
     if m < 60:
-        return f"{m}м {s}с"
+        return f"{m}{m_label} {s}{s_label}"
     h, m = divmod(m, 60)
-    return f"{h}ч {m}м"
+    return f"{h}{h_label} {m}{m_label}"
 
 
 # --- Background job helpers ---------------------------------------------------
@@ -242,11 +251,6 @@ async def _run_transcribe(job_id: str, channel_id: str,
 
 
 # --- Routes -------------------------------------------------------------------
-
-
-@app.on_event("startup")
-def _startup():
-    db.init_db()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -502,7 +506,7 @@ async def job_status(job_id: str):
         "bytes_done_human": _format_size(job["bytes_done"]),
         "bytes_total_human": _format_size(job["bytes_total"]),
         "eta_seconds": eta_sec,
-        "eta_human": _format_eta(eta_sec),
+        "eta_human": _format_eta(eta_sec, "ru"),
         "error": job["error"],
         "result": job["result"],
     })
@@ -571,8 +575,9 @@ async def search_page(request: Request, q: Optional[str] = None):
 
 
 @app.get("/api/rate")
-async def get_rate():
+async def get_rate(request: Request):
+    lang = _get_lang(request)
     return {
         "bytes_per_sec": _rate_state["bytes_per_sec"],
-        "human": f"{_format_size(int(_rate_state['bytes_per_sec']))}/с",
+        "human": f"{_format_size(int(_rate_state['bytes_per_sec']))}/{t('js_s', lang)}",
     }
