@@ -56,9 +56,8 @@
   <div class="job-label">{{ t('job_started') }}</div>
   <div class="progress"><div class="bar" style="width:0%"></div></div>
   <div class="job-meta">
-    <span class="j-status">—</span> ·
     <span class="j-count">0/0</span> ·
-    <span class="j-bytes">0 B / 0 B</span> ·
+    <span class="j-bytes"></span>
     ETA <span class="j-eta">—</span>
   </div>
 </div>
@@ -180,6 +179,9 @@ const I18N = {
   job_not_found: "{{ t('js_job_not_found') }}",
   done_nothing: "{{ t('js_done_nothing') }}",
   done_transcribed: "{{ t('js_done_transcribed') }}",
+  job_downloading: "{{ t('js_job_downloading') }}",
+  job_transcribing: "{{ t('js_job_transcribing') }}",
+  job_scanning: "{{ t('js_job_scanning') }}",
 };
 
 function fmtSize(b) {
@@ -297,9 +299,18 @@ if (panel) {
         return;
       }
       const j = await r.json();
-      panel.querySelector(".j-status").textContent = j.status;
+      // Show type-aware label while running
+      const typeLabels = {download: I18N.job_downloading, transcribe: I18N.job_transcribing, scan: I18N.job_scanning, backfill: I18N.job_scanning};
+      if (j.status === "running") {
+        panel.querySelector(".job-label").textContent = typeLabels[j.type] || j.label;
+      }
       panel.querySelector(".j-count").textContent = j.current + "/" + j.total;
-      panel.querySelector(".j-bytes").textContent = j.bytes_done_human + " / " + j.bytes_total_human;
+      const bytesEl = panel.querySelector(".j-bytes");
+      if (j.type === "download" && j.bytes_total > 0) {
+        bytesEl.textContent = j.bytes_done_human + " / " + j.bytes_total_human + " · ";
+      } else {
+        bytesEl.textContent = "";
+      }
       panel.querySelector(".j-eta").textContent = j.eta_human;
       const bar = panel.querySelector(".bar");
       if (j.total > 0 && j.current > 0) {
