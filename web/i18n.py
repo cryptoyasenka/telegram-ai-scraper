@@ -121,6 +121,38 @@ _STRINGS = {
     "prev": {"en": "Back", "ru": "Назад", "uk": "Назад"},
     "next": {"en": "Forward", "ru": "Вперёд", "uk": "Вперед"},
 
+    # --- errors / auth ---
+    "auth_needed_title": {
+        "en": "Telegram not connected",
+        "ru": "Telegram не подключён",
+        "uk": "Telegram не підключено",
+    },
+    "auth_needed_hint": {
+        "en": "Run <code>tgp auth</code> in the terminal to connect your Telegram account, then refresh this page.",
+        "ru": "Выполни <code>tgp auth</code> в терминале, чтобы подключить Telegram-аккаунт, затем обнови страницу.",
+        "uk": "Виконай <code>tgp auth</code> в терміналі, щоб підключити Telegram-акаунт, потім онови сторінку.",
+    },
+    "err_auth_needed": {
+        "en": "Run 'tgp auth' in the terminal first",
+        "ru": "Сначала выполни: tgp auth",
+        "uk": "Спочатку виконай: tgp auth",
+    },
+    "err_session_expired": {
+        "en": "Session expired. Run 'tgp auth' again",
+        "ru": "Сессия истекла. Выполни: tgp auth",
+        "uk": "Сесія закінчилась. Виконай: tgp auth",
+    },
+    "err_channel_not_found": {
+        "en": "Channel not found",
+        "ru": "Канал не найден",
+        "uk": "Канал не знайдено",
+    },
+    "err_channel_not_found_tg": {
+        "en": "Channel '%(name)s' not found on Telegram",
+        "ru": "Канал '%(name)s' не найден в Telegram",
+        "uk": "Канал '%(name)s' не знайдено в Telegram",
+    },
+
     # --- search page ---
     "search_title": {"en": "Search", "ru": "Поиск", "uk": "Пошук"},
     "search_all_placeholder": {"en": "Search across all channels...", "ru": "Поиск по всем каналам...", "uk": "Пошук по всіх каналах..."},

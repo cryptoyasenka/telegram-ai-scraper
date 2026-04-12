@@ -2,6 +2,13 @@
 {% block content %}
 <h1>{{ t('channels_title') }}</h1>
 
+{% if not authenticated %}
+<div class="auth-banner">
+  <strong>{{ t('auth_needed_title') }}</strong>
+  <p>{{ t('auth_needed_hint') | safe }}</p>
+</div>
+{% endif %}
+
 <form action="/channels/add" method="post" class="add-form">
   <input type="text" name="channel" placeholder="{{ t('add_placeholder') }}" required>
   <button type="submit">{{ t('add_button') }}</button>

@@ -111,15 +111,22 @@ def _format_eta(seconds: Optional[float], lang: str = "ru") -> str:
 # --- Background job helpers ---------------------------------------------------
 
 
-async def _load_client_or_fail():
+def _is_authenticated() -> bool:
+    """Check if Telegram credentials and session exist."""
+    creds_file = config.DATA_DIR / "api_credentials.json"
+    session_file = config.DATA_DIR / "session.session"
+    return creds_file.exists() and session_file.exists()
+
+
+async def _load_client_or_fail(lang: str = "en"):
     creds_file = config.DATA_DIR / "api_credentials.json"
     if not creds_file.exists():
-        raise HTTPException(status_code=400, detail="Сначала выполни: tgp auth")
+        raise HTTPException(status_code=400, detail=t("err_auth_needed", lang))
     creds = json.loads(creds_file.read_text())
     client = await scraper.create_client(creds["api_id"], creds["api_hash"])
     if not await client.is_user_authorized():
         await client.disconnect()
-        raise HTTPException(status_code=400, detail="Сессия истекла. tgp auth")
+        raise HTTPException(status_code=400, detail=t("err_session_expired", lang))
     return client
 
 
@@ -262,17 +269,22 @@ async def index(request: Request):
         enriched.append({**ch, "breakdown": breakdown})
     return templates.TemplateResponse(
         "index.html",
-        _ctx(request, channels=enriched, active_jobs=jobs.list_active()),
+        _ctx(request,
+            channels=enriched,
+            active_jobs=jobs.list_active(),
+            authenticated=_is_authenticated(),
+        ),
     )
 
 
 @app.post("/channels/add")
 async def channels_add(request: Request, channel: str = Form(...)):
-    client = await _load_client_or_fail()
+    lang = _get_lang(request)
+    client = await _load_client_or_fail(lang)
     try:
         info = await scraper.resolve_channel(client, channel)
         if not info:
-            raise HTTPException(status_code=404, detail=f"Канал '{channel}' не найден")
+            raise HTTPException(status_code=404, detail=t("err_channel_not_found_tg", lang, name=channel))
         db.add_channel(info["id"], info["username"], info["title"])
     finally:
         await client.disconnect()
@@ -287,7 +299,7 @@ async def channels_add(request: Request, channel: str = Form(...)):
 async def channels_scan(username: str):
     ch = db.get_channel_by_username(username)
     if not ch:
-        raise HTTPException(status_code=404, detail="Канал не найден")
+        raise HTTPException(status_code=404, detail="Channel not found")
     job_id = await jobs.create("scan", ch["id"], label=ch["title"])
     asyncio.create_task(_run_scan(job_id, ch["id"], username))
     return RedirectResponse(url=f"/channels/{username}?job={job_id}", status_code=303)
@@ -297,7 +309,7 @@ async def channels_scan(username: str):
 async def channels_backfill(username: str):
     ch = db.get_channel_by_username(username)
     if not ch:
-        raise HTTPException(status_code=404, detail="Канал не найден")
+        raise HTTPException(status_code=404, detail="Channel not found")
     job_id = await jobs.create("backfill", ch["id"], label=ch["title"])
     asyncio.create_task(_run_backfill(job_id, ch["id"]))
     return RedirectResponse(url=f"/channels/{username}?job={job_id}", status_code=303)
@@ -307,7 +319,7 @@ async def channels_backfill(username: str):
 async def channels_transcribe(username: str, request: Request):
     ch = db.get_channel_by_username(username)
     if not ch:
-        raise HTTPException(status_code=404, detail="Канал не найден")
+        raise HTTPException(status_code=404, detail="Channel not found")
     form = await request.form()
     selected = list(form.getlist("tr_types"))
     if not selected:
@@ -324,7 +336,7 @@ async def channels_transcribe(username: str, request: Request):
 async def channel_detail(request: Request, username: str, job: Optional[str] = None):
     ch = db.get_channel_by_username(username)
     if not ch:
-        raise HTTPException(status_code=404, detail="Канал не найден")
+        raise HTTPException(status_code=404, detail="Channel not found")
 
     breakdown = db.get_media_breakdown(ch["id"])
     total_posts = sum(v["count"] for v in breakdown.values())
@@ -425,7 +437,7 @@ async def channels_set_download_dir(username: str, request: Request):
     import shutil
     ch = db.get_channel_by_username(username)
     if not ch:
-        raise HTTPException(status_code=404, detail="Канал не найден")
+        raise HTTPException(status_code=404, detail="Channel not found")
     form = await request.form()
     raw = form.get("download_dir", "").strip()
 
@@ -461,7 +473,7 @@ async def channels_set_download_dir(username: str, request: Request):
 async def channels_download(username: str, request: Request):
     ch = db.get_channel_by_username(username)
     if not ch:
-        raise HTTPException(status_code=404, detail="Канал не найден")
+        raise HTTPException(status_code=404, detail="Channel not found")
 
     form = await request.form()
     # Checkbox values come as multiple 'types' entries
@@ -518,7 +530,7 @@ async def channel_messages(request: Request, username: str,
                            page: int = 1):
     ch = db.get_channel_by_username(username)
     if not ch:
-        raise HTTPException(status_code=404, detail="Канал не найден")
+        raise HTTPException(status_code=404, detail="Channel not found")
 
     per_page = 50
     offset = (page - 1) * per_page

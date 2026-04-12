@@ -4,15 +4,56 @@ title TG Parser
 
 cd /d "%~dp0"
 
+:: Check Python is available
+where python >nul 2>&1
+if errorlevel 1 (
+    echo [!] Python not found. Install from https://python.org
+    echo     Make sure to check "Add to PATH" during installation.
+    pause
+    exit /b 1
+)
+
 :: Create venv if missing
 if not exist ".venv\Scripts\activate.bat" (
     echo [*] Creating virtual environment...
     python -m venv .venv
+    if errorlevel 1 (
+        echo [!] Failed to create virtual environment.
+        pause
+        exit /b 1
+    )
     call .venv\Scripts\activate.bat
+    echo [*] Installing dependencies (this may take a minute)...
     pip install -e .
-    echo [+] Installed!
+    if errorlevel 1 (
+        echo [!] Installation failed.
+        pause
+        exit /b 1
+    )
+    echo.
+    echo [+] Installed successfully!
 ) else (
     call .venv\Scripts\activate.bat
+)
+
+:: Check if auth is needed
+if not exist "data\session.session" (
+    echo.
+    echo ============================================
+    echo   First time setup: Telegram authentication
+    echo ============================================
+    echo.
+    echo   1. Go to https://my.telegram.org
+    echo   2. Get your API ID and API Hash
+    echo   3. Enter them below:
+    echo.
+    tgp auth
+    if errorlevel 1 (
+        echo [!] Authentication failed. Try again.
+        pause
+        exit /b 1
+    )
+    echo.
 )
 
 :: Open browser after 2 seconds

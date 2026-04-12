@@ -197,5 +197,17 @@ tr.done td { color: var(--muted); }
 .msg-transcript { background: rgba(76,175,136,0.08); border-left: 3px solid var(--accent-2); padding: 8px 12px; margin-top: 6px; border-radius: 0 6px 6px 0; font-size: 13px; color: var(--accent-2); }
 .msg-reactions { margin-top: 6px; font-size: 13px; color: var(--muted); }
 
+/* Auth banner */
+.auth-banner {
+  background: rgba(225,91,91,0.1);
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.auth-banner strong { color: var(--danger); }
+.auth-banner p { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.auth-banner code { background: rgba(255,255,255,.08); padding: 2px 6px; border-radius: 4px; color: var(--fg); }
+
 /* Pagination */
 .pagination { display: flex; align-items: center; gap: 12px; margin-top: 20px; justify-content: center; }
