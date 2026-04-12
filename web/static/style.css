@@ -82,6 +82,8 @@ th, td {
 }
 th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; }
 tr.dim td { color: var(--muted); }
+tr.done td { color: var(--muted); }
+.ok { color: var(--accent-2); }
 
 .channel-head { margin-bottom: 24px; }
 .channel-head .inline { display: inline-block; margin-top: 12px; }
@@ -105,6 +107,15 @@ tr.dim td { color: var(--muted); }
   height: 100%;
   background: var(--accent);
   transition: width 0.5s ease;
+}
+.bar.indeterminate {
+  width: 30% !important;
+  animation: slide 1.2s ease-in-out infinite;
+}
+@keyframes slide {
+  0% { margin-left: 0; }
+  50% { margin-left: 70%; }
+  100% { margin-left: 0; }
 }
 .job-meta { color: var(--muted); font-size: 13px; }
 

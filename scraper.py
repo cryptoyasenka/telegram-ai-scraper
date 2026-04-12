@@ -354,6 +354,7 @@ async def download_pending_media(client: TelegramClient, channel_id: str,
         messages = await client.get_messages(entity, ids=chunk_ids)
 
         async def _fetch(msg):
+            nonlocal done
             if msg is None:
                 return None
             mt = _get_media_type(msg)
@@ -362,16 +363,13 @@ async def download_pending_media(client: TelegramClient, channel_id: str,
             path = await _download_one(msg, mt, media_dir, sem)
             if path:
                 db.update_media_path(channel_id, msg.id, path)
+                done += 1
+                if progress_callback:
+                    progress_callback(done, total)
                 return path
             return None
 
-        results = await asyncio.gather(*[_fetch(m) for m in messages], return_exceptions=True)
-        for r in results:
-            if isinstance(r, str):
-                done += 1
-
-        if progress_callback:
-            progress_callback(min(i + len(chunk_ids), total), total)
+        await asyncio.gather(*[_fetch(m) for m in messages], return_exceptions=True)
 
     return done
 

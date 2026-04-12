@@ -49,18 +49,18 @@
     <tbody>
     {% for c in cards %}
       {% if c.key != 'text' and c.key != 'other' %}
-        {% set disabled = c.pending_bytes == 0 and c.downloaded == c.count %}
-        <tr class="{% if disabled %}dim{% endif %}">
+        {% set all_done = c.downloaded == c.count %}
+        <tr class="{% if all_done %}done{% endif %}">
           <td>
             <input type="checkbox" name="types" value="{{ c.key }}"
               data-bytes="{{ c.pending_bytes }}" data-count="{{ c.count - c.downloaded }}"
-              class="type-cb" {% if disabled %}disabled{% endif %}>
+              class="type-cb">
           </td>
           <td><label>{{ c.key }}</label></td>
           <td>{{ c.count }}</td>
-          <td>{{ c.downloaded }}</td>
+          <td>{{ c.downloaded }}{% if all_done %} ✓{% endif %}</td>
           <td>{{ c.count - c.downloaded }}</td>
-          <td>{{ c.pending_bytes_human }}</td>
+          <td>{% if all_done %}<span class="ok">уже скачано</span>{% else %}{{ c.pending_bytes_human }}{% endif %}</td>
         </tr>
       {% endif %}
     {% endfor %}
@@ -129,20 +129,44 @@ if (panel) {
   async function poll() {
     try {
       const r = await fetch("/jobs/" + jobId);
-      if (!r.ok) return;
+      if (!r.ok) {
+        panel.querySelector(".job-label").textContent = "Задача не найдена (перезапуск сервера?)";
+        panel.querySelector(".bar").classList.remove("indeterminate");
+        return;
+      }
       const j = await r.json();
       panel.querySelector(".j-status").textContent = j.status;
       panel.querySelector(".j-count").textContent = j.current + "/" + j.total;
       panel.querySelector(".j-bytes").textContent = j.bytes_done_human + " / " + j.bytes_total_human;
       panel.querySelector(".j-eta").textContent = j.eta_human;
-      const pct = j.total > 0 ? Math.min(100, 100 * j.current / j.total) : 0;
-      panel.querySelector(".bar").style.width = pct + "%";
+      const bar = panel.querySelector(".bar");
+      if (j.total > 0 && j.current > 0) {
+        bar.classList.remove("indeterminate");
+        bar.style.width = Math.min(100, 100 * j.current / j.total) + "%";
+      } else if (j.status === "running") {
+        bar.classList.add("indeterminate");
+      }
       if (j.status === "running") {
         setTimeout(poll, 1000);
       } else {
-        panel.querySelector(".job-label").textContent =
-          j.status === "done" ? "Готово" : "Ошибка: " + (j.error || "");
-        setTimeout(() => window.location.reload(), 1200);
+        bar.classList.remove("indeterminate");
+        if (j.status === "done") {
+          bar.style.width = "100%";
+          const count = j.result?.downloaded ?? j.result?.updated ?? j.current;
+          panel.querySelector(".job-label").textContent =
+            count > 0 ? "Готово — " + count + " файлов" : "Готово — нечего скачивать";
+        } else {
+          bar.style.width = "0%";
+          panel.querySelector(".job-label").textContent = "Ошибка: " + (j.error || "");
+        }
+        setTimeout(() => {
+          panel.style.transition = "opacity 0.5s";
+          panel.style.opacity = "0";
+          setTimeout(() => {
+            panel.remove();
+            window.location.replace("/channels/" + window.location.pathname.split("/").pop());
+          }, 500);
+        }, 2000);
       }
     } catch (e) {
       setTimeout(poll, 2000);
