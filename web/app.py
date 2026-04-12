@@ -321,6 +321,12 @@ async def channels_transcribe(username: str, request: Request):
     ch = db.get_channel_by_username(username)
     if not ch:
         raise HTTPException(status_code=404, detail="Channel not found")
+    # Block if a transcription job is already running for this channel
+    active = [j for j in jobs.list_active()
+              if j["type"] == "transcribe" and j["channel_id"] == ch["id"]]
+    if active:
+        return RedirectResponse(
+            url=f"/channels/{username}?job={active[0]['id']}", status_code=303)
     form = await request.form()
     selected = list(form.getlist("tr_types"))
     if not selected:
