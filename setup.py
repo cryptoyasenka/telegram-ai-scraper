@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="tg-parser",
+    name="telegram-ai-scraper",
     version="0.2.0",
-    description="Telegram channel parser with transcription and web UI",
+    description="Telegram channel scraper with Whisper transcription and AI-ready export",
     author="cryptoyasenka",
-    url="https://github.com/cryptoyasenka/tg-parser",
+    url="https://github.com/cryptoyasenka/telegram-ai-scraper",
     py_modules=["cli", "config", "db", "scraper", "transcriber", "exporter", "links"],
     packages=find_packages(include=["web", "web.*"]),
     package_data={"web": ["templates/*.html", "static/*.css"]},

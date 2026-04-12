@@ -1,4 +1,4 @@
-# TG Parser
+# Telegram AI Scraper
 
 **Turn any Telegram channel into a searchable, AI-ready knowledge base.**
 
@@ -96,8 +96,8 @@ Links: [cursor.com](https://cursor.com) | [claude.ai](https://claude.ai)
 ## Manual Installation
 
 ```bash
-git clone https://github.com/cryptoyasenka/tg-parser.git
-cd tg-parser
+git clone https://github.com/cryptoyasenka/telegram-ai-scraper.git
+cd telegram-ai-scraper
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e .
