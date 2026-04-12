@@ -56,6 +56,11 @@ if not exist "data\session.session" (
     echo.
 )
 
+:: Kill any existing server on port 8765
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8765 ^| findstr LISTENING') do (
+    taskkill /f /pid %%a >nul 2>&1
+)
+
 :: Open browser after 2 seconds
 start "" /b cmd /c "timeout /t 2 /nobreak >nul && rundll32 url.dll,FileProtocolHandler http://127.0.0.1:8765"
 
