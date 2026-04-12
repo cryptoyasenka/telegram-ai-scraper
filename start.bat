@@ -2,28 +2,30 @@
 chcp 65001 >nul
 title TG Parser
 
-:: Check if venv exists, create if not
-if not exist ".venv\Scripts\python.exe" (
-    echo [*] First run — setting up...
+cd /d "%~dp0"
+
+:: Create venv if missing
+if not exist ".venv\Scripts\activate.bat" (
+    echo [*] Creating virtual environment...
     python -m venv .venv
     call .venv\Scripts\activate.bat
-    pip install -e . >nul 2>&1
+    pip install -e .
     echo [+] Installed!
-    echo.
-    echo    Next step: run "tgp auth" to connect your Telegram account.
-    echo    Then restart this script.
-    echo.
-    pause
-    exit /b
+) else (
+    call .venv\Scripts\activate.bat
 )
 
-call .venv\Scripts\activate.bat
-
 :: Open browser after 2 seconds
-start "" cmd /c "timeout /t 2 /nobreak >nul && start http://127.0.0.1:8765"
+start "" /b cmd /c "timeout /t 2 /nobreak >nul && rundll32 url.dll,FileProtocolHandler http://127.0.0.1:8765"
 
 :: Start server
-echo [*] TG Parser → http://127.0.0.1:8765
-echo     Press Ctrl+C to stop
+echo.
+echo [*] TG Parser: http://127.0.0.1:8765
+echo     Close this window to stop the server.
 echo.
 tgp serve
+
+:: If server crashes, show error
+echo.
+echo [!] Server stopped. Press any key to close.
+pause >nul
