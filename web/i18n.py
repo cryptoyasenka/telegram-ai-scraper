@@ -35,7 +35,7 @@ _STRINGS = {
         "uk": "У %(n)s повідомлень невідомий розмір медіа — ETA буде неточним, поки не заповниш.",
     },
     "download_dir": {"en": "Download folder", "ru": "Папка загрузки", "uk": "Папка завантаження"},
-    "custom_hint": {"en": "(custom)", "ru": "(кастомная)", "uk": "(власна)"},
+    "custom_hint": {"en": "(custom)", "ru": "(своя)", "uk": "(власна)"},
     "browse": {"en": "Browse", "ru": "Обзор", "uk": "Огляд"},
     "fb_up": {"en": "Up", "ru": "Вверх", "uk": "Вгору"},
     "fb_new_folder": {"en": "+ Folder", "ru": "+ Папка", "uk": "+ Папка"},
@@ -117,11 +117,11 @@ _STRINGS = {
     "all_types": {"en": "All types", "ru": "Все типы", "uk": "Усі типи"},
     "find": {"en": "Find", "ru": "Найти", "uk": "Знайти"},
     "reset": {"en": "Reset", "ru": "Сбросить", "uk": "Скинути"},
-    "views": {"en": "views", "ru": "views", "uk": "views"},
+    "views": {"en": "views", "ru": "просм.", "uk": "перегл."},
     "nothing_found": {"en": "Nothing found.", "ru": "Ничего не найдено.", "uk": "Нічого не знайдено."},
     "page_of": {"en": "Page %(page)s of %(total)s", "ru": "Страница %(page)s из %(total)s", "uk": "Сторінка %(page)s з %(total)s"},
-    "prev": {"en": "Back", "ru": "Назад", "uk": "Назад"},
-    "next": {"en": "Forward", "ru": "Вперёд", "uk": "Вперед"},
+    "prev": {"en": "Previous", "ru": "Назад", "uk": "Назад"},
+    "next": {"en": "Next", "ru": "Вперёд", "uk": "Вперед"},
 
     # --- errors / auth ---
     "auth_needed_title": {
