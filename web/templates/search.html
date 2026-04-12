@@ -1,16 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Поиск — TG Parser{% endblock %}
+{% block title %}{{ t('search_title') }} — TG Parser{% endblock %}
 {% block content %}
 
-<h1>Поиск</h1>
+<a href="/" class="back-link">&larr; {{ t('back_channels') }}</a>
+<h1>{{ t('search_title') }}</h1>
 
 <form class="search-bar" method="get">
-  <input type="text" name="q" value="{{ query or '' }}" placeholder="Поиск по всем каналам..." autofocus>
-  <button type="submit" class="btn primary">Найти</button>
+  <input type="text" name="q" value="{{ query or '' }}" placeholder="{{ t('search_all_placeholder') }}" autofocus>
+  <button type="submit" class="btn primary">{{ t('find') }}</button>
 </form>
 
 {% if query %}
-<div class="sub" style="margin-bottom:16px">Найдено: {{ results|length }} сообщений</div>
+<div class="sub" style="margin-bottom:16px">{{ t('found') }}: {{ results|length }} {{ t('messages_count') }}</div>
 
 <div class="msg-list">
   {% for msg in results %}
@@ -19,7 +20,7 @@
       <a href="/channels/{{ msg.channel_username }}/messages">{{ msg.channel_title }}</a>
       <span class="msg-date">{{ msg.date[:16] if msg.date else '—' }}</span>
       {% if msg.media_type and msg.media_type != 'text' %}
-      <span class="msg-type msg-type-{{ msg.media_type }}">{{ msg.media_type }}</span>
+      <span class="msg-type msg-type-{{ msg.media_type }}">{{ get_type_label_single(msg.media_type) }}</span>
       {% endif %}
     </div>
     {% if msg.text %}
@@ -32,7 +33,7 @@
   {% endfor %}
 
   {% if not results %}
-  <p class="empty">Ничего не найдено по запросу "{{ query }}".</p>
+  <p class="empty">{{ t('nothing_found_query', q=query) }}</p>
   {% endif %}
 </div>
 {% endif %}

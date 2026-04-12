@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="{{ lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,9 +11,18 @@
   <header>
     <a href="/" class="logo">TG Parser</a>
     <nav>
-      <a href="/">Каналы</a>
-      <a href="/search">Поиск</a>
+      <a href="/">{{ t('nav_channels') }}</a>
+      <a href="/search">{{ t('nav_search') }}</a>
     </nav>
+    <div class="lang-switcher">
+      {% for code, name in languages.items() %}
+        {% if code == lang %}
+          <span class="lang-active">{{ code|upper }}</span>
+        {% else %}
+          <a href="/set-lang/{{ code }}">{{ code|upper }}</a>
+        {% endif %}
+      {% endfor %}
+    </div>
   </header>
   <main>
     {% block content %}{% endblock %}

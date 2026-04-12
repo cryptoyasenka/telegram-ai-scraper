@@ -26,6 +26,10 @@ header {
 nav { display: flex; gap: 16px; }
 nav a { color: var(--muted); text-decoration: none; font-size: 14px; }
 nav a:hover { color: var(--fg); }
+.lang-switcher { margin-left: auto; display: flex; gap: 8px; font-size: 12px; }
+.lang-switcher a { color: var(--muted); text-decoration: none; }
+.lang-switcher a:hover { color: var(--fg); }
+.lang-active { color: var(--accent); font-weight: 600; }
 .logo {
   color: var(--fg);
   text-decoration: none;
@@ -91,6 +95,8 @@ tr.dim td { color: var(--muted); }
 tr.done td { color: var(--muted); }
 .ok { color: var(--accent-2); }
 
+.back-link { color: var(--muted); text-decoration: none; font-size: 13px; display: inline-block; margin-bottom: 8px; }
+.back-link:hover { color: var(--accent); }
 .channel-head { margin-bottom: 24px; }
 .channel-head .inline { display: inline-block; margin-top: 12px; }
 

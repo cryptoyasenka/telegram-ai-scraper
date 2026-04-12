@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Каналы</h1>
+<h1>{{ t('channels_title') }}</h1>
 
 <form action="/channels/add" method="post" class="add-form">
-  <input type="text" name="channel" placeholder="@username или t.me/..." required>
-  <button type="submit">Добавить и просканировать</button>
+  <input type="text" name="channel" placeholder="{{ t('add_placeholder') }}" required>
+  <button type="submit">{{ t('add_button') }}</button>
 </form>
 
 {% if active_jobs %}
   <div class="jobs">
-    <h3>Активные задачи</h3>
+    <h3>{{ t('active_jobs') }}</h3>
     {% for j in active_jobs %}
       <div class="job">
         <span>{{ j.label }} — {{ j.type }}</span>
@@ -22,10 +22,10 @@
 <table class="channels">
   <thead>
     <tr>
-      <th>Канал</th>
-      <th>Постов</th>
-      <th>Медиа на диске</th>
-      <th>Доступно скачать</th>
+      <th>{{ t('th_channel') }}</th>
+      <th>{{ t('th_posts') }}</th>
+      <th>{{ t('th_on_disk') }}</th>
+      <th>{{ t('th_available') }}</th>
       <th></th>
     </tr>
   </thead>
@@ -41,13 +41,13 @@
         <td>{{ total }}</td>
         <td>{{ ch.breakdown.values()|sum(attribute='downloaded') }}</td>
         <td>{{ pending_count }}</td>
-        <td><a href="/channels/{{ ch.username }}" class="btn">Открыть</a></td>
+        <td><a href="/channels/{{ ch.username }}" class="btn">{{ t('open') }}</a></td>
       </tr>
     {% endfor %}
   </tbody>
 </table>
 
 {% if not channels %}
-  <p class="empty">Пока нет каналов. Добавь через форму выше.</p>
+  <p class="empty">{{ t('no_channels') }}</p>
 {% endif %}
 {% endblock %}

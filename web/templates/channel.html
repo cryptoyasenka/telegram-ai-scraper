@@ -3,56 +3,57 @@
 {% block content %}
 
 <div class="channel-head">
+  <a href="/" class="back-link">&larr; {{ t('back_channels') }}</a>
   <h1>{{ channel.title }}</h1>
-  <div class="sub">@{{ channel.username }} · {{ total_posts }} постов · {{ total_bytes_human }} медиа</div>
+  <div class="sub">@{{ channel.username }} · {{ total_posts }} {{ t('posts_suffix') }} · {{ total_bytes_human }} {{ t('media_suffix') }}</div>
   <form action="/channels/{{ channel.username }}/scan" method="post" class="inline">
-    <button type="submit">Обновить (новые посты + размеры)</button>
+    <button type="submit">{{ t('update_button') }}</button>
   </form>
-  <a href="/channels/{{ channel.username }}/messages" class="btn inline">Все сообщения</a>
+  <a href="/channels/{{ channel.username }}/messages" class="btn inline">{{ t('all_messages') }}</a>
   {% if missing_sizes > 0 %}
   <form action="/channels/{{ channel.username }}/backfill-sizes" method="post" class="inline">
-    <button type="submit">Заполнить размеры ({{ missing_sizes }})</button>
+    <button type="submit">{{ t('fill_sizes') }} ({{ missing_sizes }})</button>
   </form>
   <div class="sub" style="margin-top: 6px; color: #e3a84c;">
-    ⚠ У {{ missing_sizes }} сообщений неизвестен размер медиа — ETA будет неточным, пока не заполнишь.
+    ⚠ {{ t('missing_sizes_warn', n=missing_sizes) }}
   </div>
   {% endif %}
 </div>
 
 <div class="download-dir-box">
   <details{% if is_custom_dir %} open{% endif %}>
-    <summary>Папка загрузки: <code>{{ channel_dir }}</code>{% if is_custom_dir %} <span class="hint">(кастомная)</span>{% endif %}</summary>
+    <summary>{{ t('download_dir') }}: <code>{{ channel_dir }}</code>{% if is_custom_dir %} <span class="hint">{{ t('custom_hint') }}</span>{% endif %}</summary>
     <form action="/channels/{{ channel.username }}/set-download-dir" method="post" class="dir-form">
       <div class="dir-input-row">
         <input type="text" name="download_dir" id="dir-input" value="{{ channel_dir }}"
                placeholder="{{ default_dir }}">
-        <button type="button" class="btn" id="browse-btn" onclick="toggleBrowser()">Обзор</button>
+        <button type="button" class="btn" id="browse-btn" onclick="toggleBrowser()">{{ t('browse') }}</button>
       </div>
       <div id="folder-browser" class="folder-browser" style="display:none">
         <div class="fb-toolbar">
-          <button type="button" class="fb-btn" id="fb-up" onclick="fbUp()" title="Вверх">&#8593;</button>
+          <button type="button" class="fb-btn" id="fb-up" onclick="fbUp()" title="{{ t('fb_up') }}">&#8593;</button>
           <span class="fb-path" id="fb-current-path"></span>
-          <button type="button" class="fb-btn" id="fb-new" onclick="fbNewFolder()" title="Новая папка">+ Папка</button>
+          <button type="button" class="fb-btn" id="fb-new" onclick="fbNewFolder()" title="{{ t('fb_new_folder') }}">{{ t('fb_new_folder') }}</button>
         </div>
         <div class="fb-list" id="fb-list"></div>
         <div class="fb-actions">
-          <button type="button" class="btn primary" onclick="fbSelect()">Выбрать эту папку</button>
+          <button type="button" class="btn primary" onclick="fbSelect()">{{ t('fb_select') }}</button>
         </div>
       </div>
       <div class="dir-actions">
-        <button type="submit" class="btn">Сохранить</button>
+        <button type="submit" class="btn">{{ t('save') }}</button>
         {% if is_custom_dir %}
-        <button type="submit" name="download_dir" value="" class="btn secondary">Сбросить по умолчанию</button>
+        <button type="submit" name="download_dir" value="" class="btn secondary">{{ t('reset_default') }}</button>
         {% endif %}
       </div>
-      <div class="hint">По умолчанию: <code>{{ default_dir }}</code></div>
+      <div class="hint">{{ t('default_label') }}: <code>{{ default_dir }}</code></div>
     </form>
   </details>
 </div>
 
 {% if current_job_id %}
 <div id="job-panel" data-job-id="{{ current_job_id }}" class="job-panel">
-  <div class="job-label">Задача запущена…</div>
+  <div class="job-label">{{ t('job_started') }}</div>
   <div class="progress"><div class="bar" style="width:0%"></div></div>
   <div class="job-meta">
     <span class="j-status">—</span> ·
@@ -63,19 +64,19 @@
 </div>
 {% endif %}
 
-<h2>Выбор того, что скачать</h2>
-<p class="hint">Текст, реакции и метаданные уже в БД. Отмечай типы медиа — ETA пересчитается под выбор. Скорость сети: <b id="rate-display">{{ rate_human }}</b></p>
+<h2>{{ t('select_download') }}</h2>
+<p class="hint">{{ t('db_hint') }} <b id="rate-display">{{ rate_human }}</b></p>
 
 <form action="/channels/{{ channel.username }}/download" method="post" id="dl-form">
   <table class="media-table">
     <thead>
       <tr>
         <th></th>
-        <th>Тип</th>
-        <th>Всего</th>
-        <th>Скачано</th>
-        <th>Осталось</th>
-        <th>Размер (не скачано)</th>
+        <th>{{ t('th_type') }}</th>
+        <th>{{ t('th_total') }}</th>
+        <th>{{ t('th_downloaded') }}</th>
+        <th>{{ t('th_remaining') }}</th>
+        <th>{{ t('th_size_pending') }}</th>
       </tr>
     </thead>
     <tbody>
@@ -88,11 +89,11 @@
               data-bytes="{{ c.pending_bytes }}" data-count="{{ c.count - c.downloaded }}"
               class="type-cb">
           </td>
-          <td><label>{{ c.key }}</label></td>
+          <td><label>{{ c.label }}</label></td>
           <td>{{ c.count }}</td>
           <td>{{ c.downloaded }}{% if all_done %} ✓{% endif %}</td>
           <td>{{ c.count - c.downloaded }}</td>
-          <td>{% if all_done %}<span class="ok">уже скачано</span>{% else %}{{ c.pending_bytes_human }}{% endif %}</td>
+          <td>{% if all_done %}<span class="ok">{{ t('already_downloaded') }}</span>{% else %}{{ c.pending_bytes_human }}{% endif %}</td>
         </tr>
       {% endif %}
     {% endfor %}
@@ -100,11 +101,11 @@
       {% if c.key == 'text' %}
         <tr class="dim">
           <td><input type="checkbox" checked disabled></td>
-          <td><label>text</label></td>
+          <td><label>{{ t('type_text') }}</label></td>
           <td>{{ c.count }}</td>
           <td>—</td>
           <td>—</td>
-          <td>уже в БД</td>
+          <td>{{ t('already_in_db') }}</td>
         </tr>
       {% endif %}
     {% endfor %}
@@ -112,15 +113,26 @@
   </table>
 
   <div class="eta-box">
-    Выбрано: <b id="sel-count">0</b> файлов, <b id="sel-size">0 B</b>
-    · расчётное время: <b id="sel-eta">—</b>
+    {{ t('selected') }}: <b id="sel-count">0</b> {{ t('files') }}, <b id="sel-size">0 B</b>
+    · {{ t('est_time') }}: <b id="sel-eta">—</b>
   </div>
 
-  <button type="submit" class="btn primary">Скачать выбранное</button>
+  <button type="submit" class="btn primary">{{ t('download_selected') }}</button>
 </form>
 
 <script>
 const RATE = {{ rate_bytes_per_sec|int }};
+const I18N = {
+  s: "{{ t('js_s') }}",
+  m: "{{ t('js_m') }}",
+  h: "{{ t('js_h') }}",
+  drives: "{{ t('js_drives') }}",
+  no_subfolders: "{{ t('js_no_subfolders') }}",
+  new_folder_prompt: "{{ t('js_new_folder_prompt') }}",
+  error: "{{ t('js_error') }}",
+  job_not_found: "{{ t('js_job_not_found') }}",
+  done_nothing: "{{ t('js_done_nothing') }}",
+};
 
 function fmtSize(b) {
   if (!b) return "0 B";
@@ -132,11 +144,11 @@ function fmtSize(b) {
 function fmtEta(sec) {
   if (!sec || sec < 0) return "—";
   sec = Math.round(sec);
-  if (sec < 60) return sec + " с";
+  if (sec < 60) return sec + " " + I18N.s;
   const m = Math.floor(sec/60), s = sec%60;
-  if (m < 60) return m + "м " + s + "с";
+  if (m < 60) return m + I18N.m + " " + s + I18N.s;
   const h = Math.floor(m/60), mm = m%60;
-  return h + "ч " + mm + "м";
+  return h + I18N.h + " " + mm + I18N.m;
 }
 function recalcEta() {
   let bytes = 0, count = 0;
@@ -174,11 +186,11 @@ async function fbLoad(path) {
   const data = await r.json();
   fbParent = data.parent;
   fbCurrent = data.current;
-  document.getElementById("fb-current-path").textContent = fbCurrent || "Диски";
+  document.getElementById("fb-current-path").textContent = fbCurrent || I18N.drives;
   document.getElementById("fb-up").disabled = !fbParent;
   const list = document.getElementById("fb-list");
   if (data.dirs.length === 0) {
-    list.innerHTML = '<div class="fb-empty">Нет подпапок</div>';
+    list.innerHTML = '<div class="fb-empty">' + I18N.no_subfolders + '</div>';
     return;
   }
   list.innerHTML = data.dirs.map(d =>
@@ -196,7 +208,7 @@ function fbSelect() {
 }
 
 async function fbNewFolder() {
-  const name = prompt("Имя новой папки:");
+  const name = prompt(I18N.new_folder_prompt);
   if (!name) return;
   const newPath = fbCurrent ? (fbCurrent + "\\" + name) : name;
   const r = await fetch("/api/create-dir", {
@@ -208,7 +220,7 @@ async function fbNewFolder() {
     fbLoad(fbCurrent);
   } else {
     const err = await r.json();
-    alert("Ошибка: " + (err.detail || ""));
+    alert(I18N.error + ": " + (err.detail || ""));
   }
 }
 
@@ -220,7 +232,7 @@ if (panel) {
     try {
       const r = await fetch("/jobs/" + jobId);
       if (!r.ok) {
-        panel.querySelector(".job-label").textContent = "Задача не найдена (перезапуск сервера?)";
+        panel.querySelector(".job-label").textContent = I18N.job_not_found;
         panel.querySelector(".bar").classList.remove("indeterminate");
         return;
       }
@@ -244,10 +256,10 @@ if (panel) {
           bar.style.width = "100%";
           const count = j.result?.downloaded ?? j.result?.updated ?? j.current;
           panel.querySelector(".job-label").textContent =
-            count > 0 ? "Готово — " + count + " файлов" : "Готово — нечего скачивать";
+            count > 0 ? ("{{ t('js_done_files') }}".replace("%(n)s", count)) : I18N.done_nothing;
         } else {
           bar.style.width = "0%";
-          panel.querySelector(".job-label").textContent = "Ошибка: " + (j.error || "");
+          panel.querySelector(".job-label").textContent = I18N.error + ": " + (j.error || "");
         }
         setTimeout(() => {
           panel.style.transition = "opacity 0.5s";

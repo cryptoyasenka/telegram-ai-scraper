@@ -24,6 +24,7 @@ import db  # noqa: E402
 import scraper  # noqa: E402
 import exporter  # noqa: E402
 from web import jobs  # noqa: E402
+from web.i18n import t, get_type_label, get_type_label_single, LANGUAGES, DEFAULT_LANG  # noqa: E402
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -31,6 +32,34 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 app = FastAPI(title="TG Parser")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+
+def _get_lang(request: Request) -> str:
+    return request.cookies.get("lang", DEFAULT_LANG)
+
+
+def _ctx(request: Request, **kwargs) -> dict:
+    """Base template context with i18n."""
+    lang = _get_lang(request)
+    return {
+        "request": request,
+        "t": lambda key, **kw: t(key, lang, **kw),
+        "lang": lang,
+        "languages": LANGUAGES,
+        "get_type_label": lambda key: get_type_label(key, lang),
+        "get_type_label_single": lambda key: get_type_label_single(key, lang),
+        **kwargs,
+    }
+
+
+@app.get("/set-lang/{lang}")
+async def set_lang(lang: str, request: Request):
+    if lang not in LANGUAGES:
+        lang = DEFAULT_LANG
+    referer = request.headers.get("referer", "/")
+    response = RedirectResponse(url=referer, status_code=303)
+    response.set_cookie("lang", lang, max_age=365 * 86400)
+    return response
 
 
 # Moving-average download rate (bytes/sec), seeded with a reasonable Telegram default.
@@ -193,7 +222,7 @@ async def index(request: Request):
         enriched.append({**ch, "breakdown": breakdown})
     return templates.TemplateResponse(
         "index.html",
-        {"request": request, "channels": enriched, "active_jobs": jobs.list_active()},
+        _ctx(request, channels=enriched, active_jobs=jobs.list_active()),
     )
 
 
@@ -247,12 +276,14 @@ async def channel_detail(request: Request, username: str, job: Optional[str] = N
 
     # Build type cards in a stable order
     order = ["text", "voice", "audio", "video_note", "photo", "video", "document", "other"]
+    lang = _get_lang(request)
     cards = []
     for key in order:
         if key in breakdown:
             v = breakdown[key]
             cards.append({
                 "key": key,
+                "label": get_type_label(key, lang),
                 "count": v["count"],
                 "bytes": v["bytes"],
                 "bytes_human": _format_size(v["bytes"]),
@@ -266,20 +297,19 @@ async def channel_detail(request: Request, username: str, job: Optional[str] = N
 
     return templates.TemplateResponse(
         "channel.html",
-        {
-            "request": request,
-            "channel": ch,
-            "cards": cards,
-            "total_posts": total_posts,
-            "total_bytes_human": _format_size(total_bytes),
-            "rate_bytes_per_sec": _rate_state["bytes_per_sec"],
-            "rate_human": f"{_format_size(int(_rate_state['bytes_per_sec']))}/с",
-            "current_job_id": job,
-            "missing_sizes": missing_sizes,
-            "channel_dir": str(channel_dir),
-            "default_dir": default_dir,
-            "is_custom_dir": ch.get("download_dir") is not None,
-        },
+        _ctx(request,
+            channel=ch,
+            cards=cards,
+            total_posts=total_posts,
+            total_bytes_human=_format_size(total_bytes),
+            rate_bytes_per_sec=_rate_state["bytes_per_sec"],
+            rate_human=f"{_format_size(int(_rate_state['bytes_per_sec']))}/{t('js_s', lang)}",
+            current_job_id=job,
+            missing_sizes=missing_sizes,
+            channel_dir=str(channel_dir),
+            default_dir=default_dir,
+            is_custom_dir=ch.get("download_dir") is not None,
+        ),
     )
 
 
@@ -459,17 +489,16 @@ async def channel_messages(request: Request, username: str,
 
     return templates.TemplateResponse(
         "messages.html",
-        {
-            "request": request,
-            "channel": ch,
-            "messages": [dict(r) for r in rows],
-            "total": total,
-            "page": page,
-            "limit": per_page,
-            "total_pages": total_pages,
-            "search": q,
-            "filter_type": type,
-        },
+        _ctx(request,
+            channel=ch,
+            messages=[dict(r) for r in rows],
+            total=total,
+            page=page,
+            limit=per_page,
+            total_pages=total_pages,
+            search=q,
+            filter_type=type,
+        ),
     )
 
 
@@ -480,7 +509,7 @@ async def search_page(request: Request, q: Optional[str] = None):
         results = db.search_all(q)
     return templates.TemplateResponse(
         "search.html",
-        {"request": request, "query": q, "results": results},
+        _ctx(request, query=q, results=results),
     )
 
 

@@ -1,26 +1,27 @@
 {% extends "base.html" %}
-{% block title %}{{ channel.title }} — Сообщения{% endblock %}
+{% block title %}{{ channel.title }} — {{ t('messages_title') }}{% endblock %}
 {% block content %}
 
 <div class="channel-head">
-  <h1>{{ channel.title }}</h1>
-  <div class="sub">@{{ channel.username }} · {{ total }} сообщений{% if search %} · поиск: "{{ search }}"{% endif %}</div>
+  <a href="/channels/{{ channel.username }}" class="back-link">&larr; {{ channel.title }}</a>
+  <h1>{{ t('messages_title') }}</h1>
+  <div class="sub">@{{ channel.username }} · {{ total }} {{ t('messages_count') }}{% if search %} · {{ t('search_label') }}: "{{ search }}"{% endif %}</div>
 </div>
 
 <form class="search-bar" method="get">
-  <input type="text" name="q" value="{{ search or '' }}" placeholder="Поиск по тексту и транскрипциям...">
+  <input type="text" name="q" value="{{ search or '' }}" placeholder="{{ t('search_placeholder') }}">
   <select name="type">
-    <option value="">Все типы</option>
-    <option value="text" {% if filter_type == 'text' %}selected{% endif %}>Текст</option>
-    <option value="voice" {% if filter_type == 'voice' %}selected{% endif %}>Голосовые</option>
-    <option value="video" {% if filter_type == 'video' %}selected{% endif %}>Видео</option>
-    <option value="video_note" {% if filter_type == 'video_note' %}selected{% endif %}>Кружочки</option>
-    <option value="photo" {% if filter_type == 'photo' %}selected{% endif %}>Фото</option>
-    <option value="document" {% if filter_type == 'document' %}selected{% endif %}>Файлы</option>
+    <option value="">{{ t('all_types') }}</option>
+    <option value="text" {% if filter_type == 'text' %}selected{% endif %}>{{ t('type_text') }}</option>
+    <option value="voice" {% if filter_type == 'voice' %}selected{% endif %}>{{ t('type_voice') }}</option>
+    <option value="video" {% if filter_type == 'video' %}selected{% endif %}>{{ t('type_video') }}</option>
+    <option value="video_note" {% if filter_type == 'video_note' %}selected{% endif %}>{{ t('type_video_note') }}</option>
+    <option value="photo" {% if filter_type == 'photo' %}selected{% endif %}>{{ t('type_photo') }}</option>
+    <option value="document" {% if filter_type == 'document' %}selected{% endif %}>{{ t('type_document') }}</option>
   </select>
-  <button type="submit" class="btn">Найти</button>
+  <button type="submit" class="btn">{{ t('find') }}</button>
   {% if search or filter_type %}
-  <a href="/channels/{{ channel.username }}/messages" class="btn secondary">Сбросить</a>
+  <a href="/channels/{{ channel.username }}/messages" class="btn secondary">{{ t('reset') }}</a>
   {% endif %}
 </form>
 
@@ -31,9 +32,9 @@
       <span class="msg-date">{{ msg.date[:16] if msg.date else '—' }}</span>
       {% if msg.sender_name %}<span class="msg-sender">{{ msg.sender_name }}</span>{% endif %}
       {% if msg.media_type and msg.media_type != 'text' %}
-      <span class="msg-type msg-type-{{ msg.media_type }}">{{ msg.media_type }}</span>
+      <span class="msg-type msg-type-{{ msg.media_type }}">{{ get_type_label_single(msg.media_type) }}</span>
       {% endif %}
-      {% if msg.views %}<span class="msg-views">{{ msg.views }} views</span>{% endif %}
+      {% if msg.views %}<span class="msg-views">{{ msg.views }} {{ t('views') }}</span>{% endif %}
     </div>
     {% if msg.text %}
     <div class="msg-text">{{ msg.text }}</div>
@@ -48,18 +49,18 @@
   {% endfor %}
 
   {% if not messages %}
-  <p class="empty">Ничего не найдено.</p>
+  <p class="empty">{{ t('nothing_found') }}</p>
   {% endif %}
 </div>
 
 {% if total > limit %}
 <div class="pagination">
   {% if page > 1 %}
-  <a href="?page={{ page - 1 }}{% if search %}&q={{ search }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}" class="btn">&larr; Назад</a>
+  <a href="?page={{ page - 1 }}{% if search %}&q={{ search }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}" class="btn">&larr; {{ t('prev') }}</a>
   {% endif %}
-  <span class="hint">Страница {{ page }} из {{ total_pages }}</span>
+  <span class="hint">{{ t('page_of', page=page, total=total_pages) }}</span>
   {% if page < total_pages %}
-  <a href="?page={{ page + 1 }}{% if search %}&q={{ search }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}" class="btn">Вперёд &rarr;</a>
+  <a href="?page={{ page + 1 }}{% if search %}&q={{ search }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}" class="btn">{{ t('next') }} &rarr;</a>
   {% endif %}
 </div>
 {% endif %}
