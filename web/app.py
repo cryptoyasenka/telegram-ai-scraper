@@ -283,15 +283,86 @@ async def channel_detail(request: Request, username: str, job: Optional[str] = N
     )
 
 
+@app.get("/api/browse-dirs")
+async def browse_dirs(path: str = ""):
+    """List subdirectories at the given path for the folder picker."""
+    import string
+    if not path:
+        # Return drive roots on Windows, / on Unix
+        if sys.platform == "win32":
+            drives = []
+            for letter in string.ascii_uppercase:
+                p = Path(f"{letter}:\\")
+                if p.exists():
+                    drives.append({"name": f"{letter}:\\", "path": str(p)})
+            return {"dirs": drives, "parent": None, "current": ""}
+        else:
+            path = "/"
+
+    target = Path(path)
+    if not target.is_dir():
+        raise HTTPException(status_code=400, detail="Путь не найден")
+
+    dirs = []
+    try:
+        for entry in sorted(target.iterdir()):
+            if entry.is_dir() and not entry.name.startswith("."):
+                dirs.append({"name": entry.name, "path": str(entry)})
+    except PermissionError:
+        pass
+
+    parent = str(target.parent) if target.parent != target else None
+    return {"dirs": dirs, "parent": parent, "current": str(target)}
+
+
+@app.post("/api/create-dir")
+async def create_dir(request: Request):
+    """Create a new directory."""
+    data = await request.json()
+    path = data.get("path", "").strip()
+    if not path:
+        raise HTTPException(status_code=400, detail="Путь не указан")
+    try:
+        Path(path).mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True, "path": path}
+
+
 @app.post("/channels/{username}/set-download-dir")
 async def channels_set_download_dir(username: str, request: Request):
+    import shutil
     ch = db.get_channel_by_username(username)
     if not ch:
         raise HTTPException(status_code=404, detail="Канал не найден")
     form = await request.form()
     raw = form.get("download_dir", "").strip()
-    # Empty string → reset to default
-    db.update_download_dir(ch["id"], raw if raw else None)
+
+    old_dir = str(db.get_channel_dir(ch))
+    new_raw = raw if raw else None
+    # Compute what new dir will be
+    if new_raw:
+        new_dir = new_raw
+    else:
+        new_dir = str(config.DATA_DIR / (ch["username"] or ch["id"]))
+
+    # Move files if the directory actually changed and old one exists
+    if new_dir != old_dir and Path(old_dir).exists():
+        Path(new_dir).mkdir(parents=True, exist_ok=True)
+        # Move contents (not the dir itself, to handle merging)
+        for item in Path(old_dir).iterdir():
+            dest = Path(new_dir) / item.name
+            if not dest.exists():
+                shutil.move(str(item), str(dest))
+        # Rewrite media_path in DB
+        db.rewrite_media_paths(ch["id"], old_dir, new_dir)
+        # Clean up old dir if empty
+        try:
+            Path(old_dir).rmdir()
+        except OSError:
+            pass  # not empty, leave it
+
+    db.update_download_dir(ch["id"], new_raw)
     return RedirectResponse(url=f"/channels/{username}", status_code=303)
 
 
@@ -348,6 +419,69 @@ async def job_status(job_id: str):
         "error": job["error"],
         "result": job["result"],
     })
+
+
+@app.get("/channels/{username}/messages", response_class=HTMLResponse)
+async def channel_messages(request: Request, username: str,
+                           q: Optional[str] = None, type: Optional[str] = None,
+                           page: int = 1):
+    ch = db.get_channel_by_username(username)
+    if not ch:
+        raise HTTPException(status_code=404, detail="Канал не найден")
+
+    per_page = 50
+    offset = (page - 1) * per_page
+
+    conn = db.get_connection()
+    where = ["channel_id = ?"]
+    params: list = [ch["id"]]
+
+    if q:
+        where.append("(text LIKE ? OR voice_transcript LIKE ?)")
+        params.extend([f"%{q}%", f"%{q}%"])
+    if type:
+        if type == "text":
+            where.append("media_type IS NULL")
+        else:
+            where.append("media_type = ?")
+            params.append(type)
+
+    where_sql = " AND ".join(where)
+    total = conn.execute(f"SELECT COUNT(*) as c FROM messages WHERE {where_sql}", params).fetchone()["c"]
+    rows = conn.execute(
+        f"SELECT * FROM messages WHERE {where_sql} ORDER BY date DESC LIMIT ? OFFSET ?",
+        params + [per_page, offset],
+    ).fetchall()
+    conn.close()
+
+    import math
+    total_pages = max(1, math.ceil(total / per_page))
+
+    return templates.TemplateResponse(
+        "messages.html",
+        {
+            "request": request,
+            "channel": ch,
+            "messages": [dict(r) for r in rows],
+            "total": total,
+            "page": page,
+            "limit": per_page,
+            "total_pages": total_pages,
+            "search": q,
+            "filter_type": type,
+        },
+    )
+
+
+@app.get("/search", response_class=HTMLResponse)
+async def search_page(request: Request, q: Optional[str] = None):
+    results = []
+    if q:
+        results = db.search_all(q)
+    return templates.TemplateResponse(
+        "search.html",
+        {"request": request, "query": q, "results": results},
+    )
 
 
 @app.get("/api/rate")

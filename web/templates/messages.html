@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ channel.title }} — Сообщения{% endblock %}
+{% block content %}
+
+<div class="channel-head">
+  <h1>{{ channel.title }}</h1>
+  <div class="sub">@{{ channel.username }} · {{ total }} сообщений{% if search %} · поиск: "{{ search }}"{% endif %}</div>
+</div>
+
+<form class="search-bar" method="get">
+  <input type="text" name="q" value="{{ search or '' }}" placeholder="Поиск по тексту и транскрипциям...">
+  <select name="type">
+    <option value="">Все типы</option>
+    <option value="text" {% if filter_type == 'text' %}selected{% endif %}>Текст</option>
+    <option value="voice" {% if filter_type == 'voice' %}selected{% endif %}>Голосовые</option>
+    <option value="video" {% if filter_type == 'video' %}selected{% endif %}>Видео</option>
+    <option value="video_note" {% if filter_type == 'video_note' %}selected{% endif %}>Кружочки</option>
+    <option value="photo" {% if filter_type == 'photo' %}selected{% endif %}>Фото</option>
+    <option value="document" {% if filter_type == 'document' %}selected{% endif %}>Файлы</option>
+  </select>
+  <button type="submit" class="btn">Найти</button>
+  {% if search or filter_type %}
+  <a href="/channels/{{ channel.username }}/messages" class="btn secondary">Сбросить</a>
+  {% endif %}
+</form>
+
+<div class="msg-list">
+  {% for msg in messages %}
+  <div class="msg-card">
+    <div class="msg-meta">
+      <span class="msg-date">{{ msg.date[:16] if msg.date else '—' }}</span>
+      {% if msg.sender_name %}<span class="msg-sender">{{ msg.sender_name }}</span>{% endif %}
+      {% if msg.media_type and msg.media_type != 'text' %}
+      <span class="msg-type msg-type-{{ msg.media_type }}">{{ msg.media_type }}</span>
+      {% endif %}
+      {% if msg.views %}<span class="msg-views">{{ msg.views }} views</span>{% endif %}
+    </div>
+    {% if msg.text %}
+    <div class="msg-text">{{ msg.text }}</div>
+    {% endif %}
+    {% if msg.voice_transcript %}
+    <div class="msg-transcript">{{ msg.voice_transcript }}</div>
+    {% endif %}
+    {% if msg.reactions %}
+    <div class="msg-reactions">{{ msg.reactions }}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% if not messages %}
+  <p class="empty">Ничего не найдено.</p>
+  {% endif %}
+</div>
+
+{% if total > limit %}
+<div class="pagination">
+  {% if page > 1 %}
+  <a href="?page={{ page - 1 }}{% if search %}&q={{ search }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}" class="btn">&larr; Назад</a>
+  {% endif %}
+  <span class="hint">Страница {{ page }} из {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a href="?page={{ page + 1 }}{% if search %}&q={{ search }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}" class="btn">Вперёд &rarr;</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

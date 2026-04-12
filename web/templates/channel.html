@@ -8,6 +8,7 @@
   <form action="/channels/{{ channel.username }}/scan" method="post" class="inline">
     <button type="submit">Обновить (новые посты + размеры)</button>
   </form>
+  <a href="/channels/{{ channel.username }}/messages" class="btn inline">Все сообщения</a>
   {% if missing_sizes > 0 %}
   <form action="/channels/{{ channel.username }}/backfill-sizes" method="post" class="inline">
     <button type="submit">Заполнить размеры ({{ missing_sizes }})</button>
@@ -22,8 +23,22 @@
   <details{% if is_custom_dir %} open{% endif %}>
     <summary>Папка загрузки: <code>{{ channel_dir }}</code>{% if is_custom_dir %} <span class="hint">(кастомная)</span>{% endif %}</summary>
     <form action="/channels/{{ channel.username }}/set-download-dir" method="post" class="dir-form">
-      <input type="text" name="download_dir" value="{{ channel_dir }}"
-             placeholder="{{ default_dir }}" style="width:100%">
+      <div class="dir-input-row">
+        <input type="text" name="download_dir" id="dir-input" value="{{ channel_dir }}"
+               placeholder="{{ default_dir }}">
+        <button type="button" class="btn" id="browse-btn" onclick="toggleBrowser()">Обзор</button>
+      </div>
+      <div id="folder-browser" class="folder-browser" style="display:none">
+        <div class="fb-toolbar">
+          <button type="button" class="fb-btn" id="fb-up" onclick="fbUp()" title="Вверх">&#8593;</button>
+          <span class="fb-path" id="fb-current-path"></span>
+          <button type="button" class="fb-btn" id="fb-new" onclick="fbNewFolder()" title="Новая папка">+ Папка</button>
+        </div>
+        <div class="fb-list" id="fb-list"></div>
+        <div class="fb-actions">
+          <button type="button" class="btn primary" onclick="fbSelect()">Выбрать эту папку</button>
+        </div>
+      </div>
       <div class="dir-actions">
         <button type="submit" class="btn">Сохранить</button>
         {% if is_custom_dir %}
@@ -138,6 +153,64 @@ function recalcEta() {
 }
 document.querySelectorAll(".type-cb").forEach(cb => cb.addEventListener("change", recalcEta));
 recalcEta();
+
+// --- Folder browser ---
+let fbParent = null;
+let fbCurrent = "";
+
+function toggleBrowser() {
+  const el = document.getElementById("folder-browser");
+  if (el.style.display === "none") {
+    el.style.display = "block";
+    fbLoad("");
+  } else {
+    el.style.display = "none";
+  }
+}
+
+async function fbLoad(path) {
+  const r = await fetch("/api/browse-dirs?path=" + encodeURIComponent(path));
+  if (!r.ok) return;
+  const data = await r.json();
+  fbParent = data.parent;
+  fbCurrent = data.current;
+  document.getElementById("fb-current-path").textContent = fbCurrent || "Диски";
+  document.getElementById("fb-up").disabled = !fbParent;
+  const list = document.getElementById("fb-list");
+  if (data.dirs.length === 0) {
+    list.innerHTML = '<div class="fb-empty">Нет подпапок</div>';
+    return;
+  }
+  list.innerHTML = data.dirs.map(d =>
+    '<div class="fb-item" ondblclick="fbLoad(\'' + d.path.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + '\')">' +
+    '<span class="fb-icon">📁</span> ' + d.name + '</div>'
+  ).join("");
+}
+
+function fbUp() { if (fbParent !== null) fbLoad(fbParent); }
+
+function fbSelect() {
+  if (!fbCurrent) return;
+  document.getElementById("dir-input").value = fbCurrent;
+  document.getElementById("folder-browser").style.display = "none";
+}
+
+async function fbNewFolder() {
+  const name = prompt("Имя новой папки:");
+  if (!name) return;
+  const newPath = fbCurrent ? (fbCurrent + "\\" + name) : name;
+  const r = await fetch("/api/create-dir", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({path: newPath})
+  });
+  if (r.ok) {
+    fbLoad(fbCurrent);
+  } else {
+    const err = await r.json();
+    alert("Ошибка: " + (err.detail || ""));
+  }
+}
 
 // --- Job polling ---
 const panel = document.getElementById("job-panel");

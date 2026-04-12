@@ -97,6 +97,28 @@ def update_download_dir(channel_id: str, download_dir: str):
     conn.close()
 
 
+def rewrite_media_paths(channel_id: str, old_dir: str, new_dir: str) -> int:
+    """Replace old_dir prefix with new_dir in all media_path entries for channel."""
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT id, media_path FROM messages WHERE channel_id = ? AND media_path IS NOT NULL",
+        (channel_id,),
+    ).fetchall()
+    updated = 0
+    for r in rows:
+        old_path = r["media_path"]
+        if old_path.startswith(old_dir):
+            new_path = new_dir + old_path[len(old_dir):]
+            conn.execute(
+                "UPDATE messages SET media_path = ? WHERE id = ?",
+                (new_path, r["id"]),
+            )
+            updated += 1
+    conn.commit()
+    conn.close()
+    return updated
+
+
 def add_channel(channel_id: str, username: str, title: str):
     conn = get_connection()
     conn.execute(

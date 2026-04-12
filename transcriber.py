@@ -22,8 +22,25 @@ def _get_model():
     return _model
 
 
+def _find_ffmpeg() -> Optional[str]:
+    found = shutil.which("ffmpeg")
+    if found:
+        return found
+    # WinGet installs ffmpeg outside PATH; check common locations
+    import glob
+    for pattern in [
+        str(Path.home() / "AppData/Local/Microsoft/WinGet/Packages/*ffmpeg*/*/bin/ffmpeg.exe"),
+        "C:/ffmpeg*/bin/ffmpeg.exe",
+        "C:/tools/ffmpeg*/bin/ffmpeg.exe",
+    ]:
+        matches = glob.glob(pattern)
+        if matches:
+            return matches[0]
+    return None
+
+
 def _extract_audio(video_path: str, output_path: str) -> bool:
-    ffmpeg = shutil.which("ffmpeg")
+    ffmpeg = _find_ffmpeg()
     if not ffmpeg:
         print("ffmpeg не найден. Установите ffmpeg для транскрипции видео.")
         return False
