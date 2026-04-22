@@ -84,10 +84,16 @@ _STRINGS = {
         "ru": "%(n)s файлов ждут транскрипции (речь в текст через Whisper). Выбери типы и нажми старт.",
         "uk": "%(n)s файлів чекають транскрипції (мовлення в текст через Whisper). Обери типи і натисни старт.",
     },
-    "transcribe_done": {"en": "All transcribed", "ru": "Все транскрибированы", "uk": "Усі транскрибовано"},
+    "transcribe_done": {"en": "All processed", "ru": "Все обработаны", "uk": "Усі оброблені"},
     "tr_transcribed": {"en": "Transcribed", "ru": "Готово", "uk": "Готово"},
+    "tr_no_speech": {"en": "No speech", "ru": "Без речи", "uk": "Без мови"},
     "tr_pending": {"en": "Pending", "ru": "Ожидает", "uk": "Очікує"},
     "tr_start": {"en": "Start transcription", "ru": "Начать транскрипцию", "uk": "Почати транскрипцію"},
+    "tr_no_speech_hint": {
+        "en": "Files processed but no speech detected (silent video / music only / no audio track). They won't be retried.",
+        "ru": "Файлы обработаны, но речи нет (видео без звука / только музыка). Повторных попыток не будет.",
+        "uk": "Файли оброблені, але мови немає (відео без звуку / лише музика). Повторних спроб не буде.",
+    },
     "js_done_transcribed": {
         "en": "Done \u2014 %(n)s transcribed",
         "ru": "Готово \u2014 %(n)s транскрибировано",
@@ -162,6 +168,27 @@ _STRINGS = {
     "search_title": {"en": "Search", "ru": "Поиск", "uk": "Пошук"},
     "search_all_placeholder": {"en": "Search across all channels...", "ru": "Поиск по всем каналам...", "uk": "Пошук по всіх каналах..."},
     "found": {"en": "Found", "ru": "Найдено", "uk": "Знайдено"},
+    "js_done_transcribed_mix": {
+        "en": "Done — transcribed: %(done)s, no speech: %(ns)s",
+        "ru": "Готово — транскрибировано: %(done)s, без речи: %(ns)s",
+        "uk": "Готово — транскрибовано: %(done)s, без мови: %(ns)s",
+    },
+    "js_done_with_failures": {
+        "en": "Done — transcribed: %(done)s, failed: %(failed)s (will retry)",
+        "ru": "Готово — транскрибировано: %(done)s, ошибок: %(failed)s (повтор позже)",
+        "uk": "Готово — транскрибовано: %(done)s, помилок: %(failed)s (повтор пізніше)",
+    },
+    "js_done_scan": {
+        "en": "Done — new posts: %(new)s, sizes updated: %(sizes)s",
+        "ru": "Готово — новых постов: %(new)s, размеров обновлено: %(sizes)s",
+        "uk": "Готово — нових постів: %(new)s, оновлено розмірів: %(sizes)s",
+    },
+    "js_done_scan_empty": {
+        "en": "Done — no new posts",
+        "ru": "Готово — новых постов нет",
+        "uk": "Готово — нових постів немає",
+    },
+    "th_no_speech": {"en": "No speech", "ru": "Без речи", "uk": "Без мови"},
     "nothing_found_query": {
         "en": "Nothing found for \"%(q)s\".",
         "ru": "Ничего не найдено по запросу \"%(q)s\".",

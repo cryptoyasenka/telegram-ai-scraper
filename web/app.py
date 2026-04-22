@@ -226,12 +226,11 @@ async def _run_transcribe(job_id: str, channel_id: str,
                           media_types: list[str] = None):
     """Run transcription in a thread (whisper is CPU-bound and synchronous)."""
     import concurrent.futures
-    import time
     try:
         import transcriber
         pending = db.get_messages_without_transcript(channel_id, media_types=media_types)
         if not pending:
-            await jobs.finish(job_id, result={"transcribed": 0})
+            await jobs.finish(job_id, result={"transcribed": 0, "no_speech": 0, "failed": 0})
             return
 
         total = len(pending)
@@ -240,20 +239,33 @@ async def _run_transcribe(job_id: str, channel_id: str,
         loop = asyncio.get_event_loop()
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         done = 0
-        start = time.time()
+        no_speech = 0
+        failed = 0
 
         for i, msg in enumerate(pending):
             transcript = await loop.run_in_executor(
                 executor, transcriber.transcribe_file, msg["media_path"]
             )
-            if transcript:
+            # None = technical failure, leave NULL in DB so it can be retried later.
+            # "" = attempted but nothing to transcribe — persist to get it out of pending.
+            # "text…" = success.
+            if transcript is None:
+                failed += 1
+            else:
                 db.update_transcript(channel_id, msg["message_id"], transcript)
-                done += 1
+                if transcript:
+                    done += 1
+                else:
+                    no_speech += 1
 
             await jobs.update(job_id, current=i + 1, total=total)
 
         executor.shutdown(wait=False)
-        await jobs.finish(job_id, result={"transcribed": done})
+        await jobs.finish(job_id, result={
+            "transcribed": done,
+            "no_speech": no_speech,
+            "failed": failed,
+        })
     except Exception as e:
         await jobs.finish(job_id, error=str(e))
 

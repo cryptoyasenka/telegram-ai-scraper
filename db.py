@@ -321,12 +321,18 @@ def get_messages_without_transcript(channel_id: str,
 
 
 def get_transcript_breakdown(channel_id: str) -> dict:
-    """Per-type breakdown: {media_type: {total, transcribed, pending, total_duration_sec}}."""
+    """Per-type breakdown: {media_type: {total, transcribed, no_speech, pending, pending_bytes}}.
+
+    transcribed — whisper produced text (voice_transcript has content).
+    no_speech   — attempted but file has no speech / no audio track (empty string).
+    pending     — not yet attempted (NULL) and file is on disk.
+    """
     conn = get_connection()
     rows = conn.execute(
         """SELECT media_type,
                COUNT(*) AS total,
-               SUM(CASE WHEN voice_transcript IS NOT NULL THEN 1 ELSE 0 END) AS transcribed,
+               SUM(CASE WHEN voice_transcript IS NOT NULL AND voice_transcript != '' THEN 1 ELSE 0 END) AS transcribed,
+               SUM(CASE WHEN voice_transcript = '' THEN 1 ELSE 0 END) AS no_speech,
                SUM(CASE WHEN voice_transcript IS NULL AND media_path IS NOT NULL THEN 1 ELSE 0 END) AS pending,
                COALESCE(SUM(CASE WHEN voice_transcript IS NULL AND media_path IS NOT NULL THEN media_size ELSE 0 END), 0) AS pending_bytes
            FROM messages
@@ -437,7 +443,7 @@ def get_stats() -> dict:
         "SELECT COUNT(*) as c FROM messages WHERE media_type IN ('voice', 'video_note')"
     ).fetchone()["c"]
     transcribed = conn.execute(
-        "SELECT COUNT(*) as c FROM messages WHERE voice_transcript IS NOT NULL"
+        "SELECT COUNT(*) as c FROM messages WHERE voice_transcript IS NOT NULL AND voice_transcript != ''"
     ).fetchone()["c"]
     conn.close()
     return {

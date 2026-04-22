@@ -120,6 +120,7 @@
 </form>
 
 {% if transcript_breakdown %}
+{% set total_no_speech = transcript_breakdown.values()|sum(attribute='no_speech') %}
 <h2>{{ t('transcription_title') }}</h2>
 {% if pending_transcripts > 0 %}
 <p class="hint">{{ t('transcribe_hint', n=pending_transcripts) }}</p>
@@ -131,6 +132,7 @@
         <th>{{ t('th_type') }}</th>
         <th>{{ t('th_total') }}</th>
         <th>{{ t('tr_transcribed') }}</th>
+        <th>{{ t('th_no_speech') }}</th>
         <th>{{ t('tr_pending') }}</th>
       </tr>
     </thead>
@@ -147,13 +149,18 @@
           </td>
           <td><label>{{ get_type_label(key) }}</label></td>
           <td>{{ tb.total }}</td>
-          <td>{{ tb.transcribed }}{% if all_done %} ✓{% endif %}</td>
+          <td>{{ tb.transcribed }}{% if all_done and tb.transcribed > 0 %} ✓{% endif %}</td>
+          <td>{% if tb.no_speech > 0 %}<span class="muted">{{ tb.no_speech }}</span>{% else %}—{% endif %}</td>
           <td>{% if all_done %}<span class="ok">{{ t('transcribe_done') }}</span>{% else %}{{ tb.pending }}{% endif %}</td>
         </tr>
       {% endif %}
     {% endfor %}
     </tbody>
   </table>
+
+  {% if total_no_speech > 0 %}
+  <p class="hint">{{ t('tr_no_speech_hint') }}</p>
+  {% endif %}
 
   <div class="eta-box">
     {{ t('selected') }}: <b id="tr-sel-count">0</b> {{ t('files') }}
@@ -163,6 +170,9 @@
 </form>
 {% else %}
 <p class="done-badge" style="margin:0">✓ {{ t('transcribe_done') }}</p>
+{% if total_no_speech > 0 %}
+<p class="hint">{{ t('tr_no_speech_hint') }} ({{ total_no_speech }})</p>
+{% endif %}
 {% endif %}
 {% endif %}
 
@@ -179,6 +189,11 @@ const I18N = {
   job_not_found: "{{ t('js_job_not_found') }}",
   done_nothing: "{{ t('js_done_nothing') }}",
   done_transcribed: "{{ t('js_done_transcribed') }}",
+  done_transcribed_mix: "{{ t('js_done_transcribed_mix') }}",
+  done_with_failures: "{{ t('js_done_with_failures') }}",
+  done_scan: "{{ t('js_done_scan') }}",
+  done_scan_empty: "{{ t('js_done_scan_empty') }}",
+  done_files: "{{ t('js_done_files') }}",
   job_downloading: "{{ t('js_job_downloading') }}",
   job_transcribing: "{{ t('js_job_transcribing') }}",
   job_scanning: "{{ t('js_job_scanning') }}",
@@ -325,13 +340,38 @@ if (panel) {
         bar.classList.remove("indeterminate");
         if (j.status === "done") {
           bar.style.width = "100%";
-          const transcribed = j.result?.transcribed;
-          const count = transcribed ?? j.result?.downloaded ?? j.result?.updated ?? j.current;
+          const res = j.result || {};
           let doneMsg;
-          if (transcribed !== undefined) {
-            doneMsg = count > 0 ? I18N.done_transcribed.replace("%(n)s", count) : I18N.done_nothing;
+          if (j.type === "transcribe") {
+            const done = res.transcribed || 0;
+            const ns = res.no_speech || 0;
+            const failed = res.failed || 0;
+            if (done === 0 && ns === 0 && failed === 0) {
+              doneMsg = I18N.done_nothing;
+            } else if (failed > 0) {
+              doneMsg = I18N.done_with_failures
+                .replace("%(done)s", done)
+                .replace("%(failed)s", failed);
+            } else if (ns > 0) {
+              doneMsg = I18N.done_transcribed_mix
+                .replace("%(done)s", done)
+                .replace("%(ns)s", ns);
+            } else {
+              doneMsg = I18N.done_transcribed.replace("%(n)s", done);
+            }
+          } else if (j.type === "scan") {
+            const newPosts = res.new_posts || 0;
+            const sizes = res.sizes_updated || 0;
+            if (newPosts === 0 && sizes === 0) {
+              doneMsg = I18N.done_scan_empty;
+            } else {
+              doneMsg = I18N.done_scan
+                .replace("%(new)s", newPosts)
+                .replace("%(sizes)s", sizes);
+            }
           } else {
-            doneMsg = count > 0 ? ("{{ t('js_done_files') }}".replace("%(n)s", count)) : I18N.done_nothing;
+            const count = res.downloaded ?? res.updated ?? j.current;
+            doneMsg = count > 0 ? I18N.done_files.replace("%(n)s", count) : I18N.done_nothing;
           }
           panel.querySelector(".job-label").textContent = doneMsg;
         } else {
@@ -345,7 +385,7 @@ if (panel) {
             panel.remove();
             window.location.replace("/channels/" + window.location.pathname.split("/").pop());
           }, 500);
-        }, 2000);
+        }, 4000);
       }
     } catch (e) {
       setTimeout(poll, 2000);
