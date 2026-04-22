@@ -144,7 +144,7 @@ async def _run_scan(job_id: str, channel_id: str, username: str):
             asyncio.get_event_loop().create_task(on_progress(current, total))
 
         # Step 1: pull new messages (metadata only, no downloads)
-        await scraper.scrape_channel(
+        new_posts = await scraper.scrape_channel(
             client,
             channel_id,
             offset_id=ch["last_message_id"],
@@ -153,12 +153,18 @@ async def _run_scan(job_id: str, channel_id: str, username: str):
         )
         # Step 2: backfill media_size for rows where it's still missing
         missing = db.get_messages_missing_size(channel_id)
+        sizes_updated = 0
         if missing:
-            await jobs.update(job_id, label=f"{ch['title']} — размеры ({len(missing)})")
-            await scraper.backfill_media_sizes(
+            # Reset progress counter for the backfill stage so the UI
+            # shows X/len(missing) instead of leftovers from stage 1.
+            await jobs.update(job_id, current=0, total=len(missing))
+            sizes_updated = await scraper.backfill_media_sizes(
                 client, channel_id, progress_callback=sync_progress
             )
-        await jobs.finish(job_id, result={"username": username})
+        await jobs.finish(job_id, result={
+            "new_posts": new_posts or 0,
+            "sizes_updated": sizes_updated,
+        })
     except Exception as e:
         await jobs.finish(job_id, error=str(e))
     finally:
